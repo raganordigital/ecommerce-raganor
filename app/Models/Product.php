@@ -10,11 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
-use Illuminate\Support\Collection;
 
 /**
  * Class Product
- * 
+ *
  * @property int $id
  * @property string $name
  * @property string $slug
@@ -155,10 +154,10 @@ class Product extends Model
      */
     public function getCurrentPriceAttribute(): float
     {
-        if (!$this->on_sale) {
+        if (! $this->on_sale) {
             return (float) $this->price;
         }
-        
+
         return (float) $this->sale_price;
     }
 
@@ -167,20 +166,20 @@ class Product extends Model
      */
     public function getOnSaleAttribute(): bool
     {
-        if (!$this->sale_price) {
+        if (! $this->sale_price) {
             return false;
         }
 
         $now = now();
-        
+
         if ($this->sale_price_from && $this->sale_price_from > $now) {
             return false;
         }
-        
+
         if ($this->sale_price_to && $this->sale_price_to < $now) {
             return false;
         }
-        
+
         return true;
     }
 
@@ -189,7 +188,7 @@ class Product extends Model
      */
     public function getFormattedPriceAttribute(): string
     {
-        return '$' . number_format($this->current_price, 2);
+        return '$'.number_format($this->current_price, 2);
     }
 
     /**
@@ -197,10 +196,10 @@ class Product extends Model
      */
     public function inStock(int $quantity = 1): bool
     {
-        if (!$this->manage_stock) {
+        if (! $this->manage_stock) {
             return true;
         }
-        
+
         return $this->stock_quantity >= $quantity;
     }
 
@@ -209,17 +208,17 @@ class Product extends Model
      */
     public function decreaseStock(int $quantity): bool
     {
-        if (!$this->manage_stock) {
+        if (! $this->manage_stock) {
             return true;
         }
-        
+
         if ($this->stock_quantity < $quantity) {
             return false;
         }
-        
+
         $this->decrement('stock_quantity', $quantity);
         $this->increment('sales_count', $quantity);
-        
+
         return true;
     }
 
@@ -282,5 +281,53 @@ class Product extends Model
     public function recordView(): void
     {
         $this->increment('views_count');
+    }
+
+    /**
+     * Get the reviews for this product.
+     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Get approved reviews for this product.
+     */
+    public function approvedReviews()
+    {
+        return $this->hasMany(Review::class)->where('is_approved', true);
+    }
+
+    /**
+     * Get average rating for the product.
+     */
+    public function getAverageRatingAttribute(): float
+    {
+        return (float) $this->approvedReviews()->avg('rating') ?? 0;
+    }
+
+    /**
+     * Get total reviews count.
+     */
+    public function getReviewsCountAttribute(): int
+    {
+        return $this->approvedReviews()->count();
+    }
+
+    /**
+     * Get rating distribution.
+     */
+    public function getRatingDistributionAttribute(): array
+    {
+        $distribution = [];
+
+        for ($i = 1; $i <= 5; $i++) {
+            $distribution[$i] = $this->approvedReviews()
+                ->where('rating', $i)
+                ->count();
+        }
+
+        return $distribution;
     }
 }
