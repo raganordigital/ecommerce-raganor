@@ -26,39 +26,39 @@ class RolePermissionSeeder extends Seeder
             'create products',
             'edit products',
             'delete products',
-            
+
             // Category permissions
             'view categories',
             'create categories',
             'edit categories',
             'delete categories',
-            
+
             // Order permissions
             'view orders',
             'edit orders',
             'delete orders',
             'process orders',
-            
+
             // User permissions
             'view users',
             'edit users',
             'delete users',
-            
+
             // Dashboard permissions
             'view dashboard',
             'view reports',
-            
+
             // Settings permissions
             'manage settings',
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
         // Create roles
-        $adminRole = Role::create(['name' => 'admin']);
-        $customerRole = Role::create(['name' => 'customer']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $customerRole = Role::firstOrCreate(['name' => 'customer']);
 
         // Assign all permissions to admin
         $adminRole->givePermissionTo(Permission::all());
@@ -70,18 +70,20 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // Create admin user
-        $admin = User::create([
-            'name' => 'Admin User',
+        $admin = User::firstOrCreate([
             'email' => 'admin@example.com',
+        ], [
+            'name' => 'Admin User',
             'password' => bcrypt('password'),
             'email_verified_at' => now(),
         ]);
         $admin->assignRole('admin');
 
         // Create test customer
-        $customer = User::create([
-            'name' => 'Test Customer',
+        $customer = User::firstOrCreate([
             'email' => 'customer@example.com',
+        ], [
+            'name' => 'Test Customer',
             'password' => bcrypt('password'),
             'email_verified_at' => now(),
         ]);

@@ -11,31 +11,36 @@
         </a>
     </div>
 
-    <form action="{{ route('admin.products.store') }}" 
-          method="POST" 
-          enctype="multipart/form-data"
-          class="bg-white rounded-lg shadow">
+    @if ($errors->any())
+    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <h3 class="text-lg font-medium text-red-900 mb-2">
+            <i class="fas fa-exclamation-circle mr-2"></i>Please fix the following errors:
+        </h3>
+        <ul class="list-disc list-inside space-y-1">
+            @foreach ($errors->all() as $error)
+            <li class="text-red-800">{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
+    <form action="{{ route('admin.products.store') }}" method="POST" enctype="multipart/form-data" class="bg-white rounded-lg shadow" id="productForm">
         @csrf
 
         <div class="p-6 space-y-6">
             <!-- Basic Information -->
             <div class="border-b pb-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4">Basic Information</h2>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Product Name -->
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
                             Product Name <span class="text-red-600">*</span>
                         </label>
-                        <input type="text" 
-                               name="name" 
-                               id="name" 
-                               value="{{ old('name') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                               required>
+                        <input type="text" name="name" id="name" value="{{ old('name') }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                         @error('name')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -44,14 +49,9 @@
                         <label for="sku" class="block text-sm font-medium text-gray-700 mb-1">
                             SKU <span class="text-red-600">*</span>
                         </label>
-                        <input type="text" 
-                               name="sku" 
-                               id="sku" 
-                               value="{{ old('sku') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                               required>
+                        <input type="text" name="sku" id="sku" value="{{ old('sku') }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                         @error('sku')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                         <p class="mt-1 text-xs text-gray-500">Unique product identifier</p>
                     </div>
@@ -63,17 +63,10 @@
                         </label>
                         <div class="relative">
                             <span class="absolute left-3 top-2 text-gray-500">$</span>
-                            <input type="number" 
-                                   name="price" 
-                                   id="price" 
-                                   value="{{ old('price') }}"
-                                   step="0.01"
-                                   min="0"
-                                   class="w-full pl-8 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                   required>
+                            <input type="number" name="price" id="price" value="{{ old('price') }}" step="0.01" min="0" class="w-full pl-8 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                         </div>
                         @error('price')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -84,16 +77,10 @@
                         </label>
                         <div class="relative">
                             <span class="absolute left-3 top-2 text-gray-500">$</span>
-                            <input type="number" 
-                                   name="sale_price" 
-                                   id="sale_price" 
-                                   value="{{ old('sale_price') }}"
-                                   step="0.01"
-                                   min="0"
-                                   class="w-full pl-8 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <input type="number" name="sale_price" id="sale_price" value="{{ old('sale_price') }}" step="0.01" min="0" class="w-full pl-8 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         </div>
                         @error('sale_price')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
@@ -104,13 +91,9 @@
                         <label for="sale_price_from" class="block text-sm font-medium text-gray-700 mb-1">
                             Sale Start Date
                         </label>
-                        <input type="datetime-local" 
-                               name="sale_price_from" 
-                               id="sale_price_from" 
-                               value="{{ old('sale_price_from') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="datetime-local" name="sale_price_from" id="sale_price_from" value="{{ old('sale_price_from') }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         @error('sale_price_from')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -118,13 +101,9 @@
                         <label for="sale_price_to" class="block text-sm font-medium text-gray-700 mb-1">
                             Sale End Date
                         </label>
-                        <input type="datetime-local" 
-                               name="sale_price_to" 
-                               id="sale_price_to" 
-                               value="{{ old('sale_price_to') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="datetime-local" name="sale_price_to" id="sale_price_to" value="{{ old('sale_price_to') }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         @error('sale_price_to')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
@@ -134,12 +113,9 @@
                     <label for="short_description" class="block text-sm font-medium text-gray-700 mb-1">
                         Short Description
                     </label>
-                    <textarea name="short_description" 
-                              id="short_description" 
-                              rows="2"
-                              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('short_description') }}</textarea>
+                    <textarea name="short_description" id="short_description" rows="2" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('short_description') }}</textarea>
                     @error('short_description')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -148,13 +124,9 @@
                     <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
                         Full Description <span class="text-red-600">*</span>
                     </label>
-                    <textarea name="description" 
-                              id="description" 
-                              rows="6"
-                              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                              required>{{ old('description') }}</textarea>
+                    <textarea name="description" id="description" rows="6" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required>{{ old('description') }}</textarea>
                     @error('description')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
@@ -162,37 +134,28 @@
             <!-- Categories -->
             <div class="border-b pb-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4">Categories</h2>
-                
+
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     @foreach($categories as $category)
                     <label class="flex items-center space-x-2">
-                        <input type="checkbox" 
-                               name="categories[]" 
-                               value="{{ $category->id }}"
-                               {{ in_array($category->id, old('categories', [])) ? 'checked' : '' }}
-                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <input type="checkbox" name="categories[]" value="{{ $category->id }}" {{ in_array($category->id, old('categories', [])) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         <span class="text-sm text-gray-700">{{ $category->name }}</span>
                     </label>
                     @endforeach
                 </div>
                 @error('categories')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
 
             <!-- Inventory -->
             <div class="border-b pb-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4">Inventory</h2>
-                
+
                 <div class="space-y-4">
                     <!-- Manage Stock Checkbox -->
                     <div class="flex items-center">
-                        <input type="checkbox" 
-                               name="manage_stock" 
-                               id="manage_stock" 
-                               value="1"
-                               {{ old('manage_stock', true) ? 'checked' : '' }}
-                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <input type="checkbox" name="manage_stock" id="manage_stock" value="1" {{ old('manage_stock', true) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         <label for="manage_stock" class="ml-2 text-sm text-gray-700">
                             Track stock quantity
                         </label>
@@ -203,14 +166,9 @@
                         <label for="stock_quantity" class="block text-sm font-medium text-gray-700 mb-1">
                             Stock Quantity <span class="text-red-600">*</span>
                         </label>
-                        <input type="number" 
-                               name="stock_quantity" 
-                               id="stock_quantity" 
-                               value="{{ old('stock_quantity', 0) }}"
-                               min="0"
-                               class="w-full md:w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="number" name="stock_quantity" id="stock_quantity" value="{{ old('stock_quantity', 0) }}" min="0" class="w-full md:w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         @error('stock_quantity')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
@@ -219,7 +177,7 @@
             <!-- Product Images -->
             <div class="border-b pb-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4">Product Images</h2>
-                
+
                 <div class="space-y-4">
                     <div class="flex items-center justify-center w-full">
                         <label for="images" class="w-full flex flex-col items-center px-4 py-6 bg-white rounded-lg border-2 border-gray-300 border-dashed cursor-pointer hover:bg-gray-50">
@@ -227,22 +185,17 @@
                             <span class="mt-2 text-sm text-gray-500">Click to upload images</span>
                             <span class="text-xs text-gray-400">PNG, JPG, GIF, WEBP up to 2MB (Max 5 images)</span>
                         </label>
-                        <input type="file" 
-                               name="images[]" 
-                               id="images" 
-                               multiple 
-                               accept="image/*"
-                               class="hidden">
+                        <input type="file" name="images[]" id="images" multiple accept="image/*" class="hidden">
                     </div>
 
                     <!-- Image Preview -->
                     <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4"></div>
 
                     @error('images')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                     @error('images.*')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
@@ -250,19 +203,15 @@
             <!-- SEO -->
             <div class="border-b pb-6">
                 <h2 class="text-lg font-medium text-gray-900 mb-4">SEO Settings</h2>
-                
+
                 <div class="space-y-4">
                     <div>
                         <label for="meta_title" class="block text-sm font-medium text-gray-700 mb-1">
                             Meta Title
                         </label>
-                        <input type="text" 
-                               name="meta_title" 
-                               id="meta_title" 
-                               value="{{ old('meta_title') }}"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="text" name="meta_title" id="meta_title" value="{{ old('meta_title') }}" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         @error('meta_title')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -270,12 +219,9 @@
                         <label for="meta_description" class="block text-sm font-medium text-gray-700 mb-1">
                             Meta Description
                         </label>
-                        <textarea name="meta_description" 
-                                  id="meta_description" 
-                                  rows="3"
-                                  class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('meta_description') }}</textarea>
+                        <textarea name="meta_description" id="meta_description" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">{{ old('meta_description') }}</textarea>
                         @error('meta_description')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
@@ -283,14 +229,9 @@
                         <label for="meta_keywords" class="block text-sm font-medium text-gray-700 mb-1">
                             Meta Keywords
                         </label>
-                        <input type="text" 
-                               name="meta_keywords" 
-                               id="meta_keywords" 
-                               value="{{ old('meta_keywords') }}"
-                               placeholder="keyword1, keyword2, keyword3"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <input type="text" name="meta_keywords" id="meta_keywords" value="{{ old('meta_keywords') }}" placeholder="keyword1, keyword2, keyword3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         @error('meta_keywords')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
@@ -299,23 +240,15 @@
             <!-- Status -->
             <div>
                 <h2 class="text-lg font-medium text-gray-900 mb-4">Status</h2>
-                
+
                 <div class="space-y-2">
                     <label class="flex items-center">
-                        <input type="checkbox" 
-                               name="is_active" 
-                               value="1"
-                               {{ old('is_active', true) ? 'checked' : '' }}
-                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         <span class="ml-2 text-sm text-gray-700">Active (visible to customers)</span>
                     </label>
-                    
+
                     <label class="flex items-center">
-                        <input type="checkbox" 
-                               name="is_featured" 
-                               value="1"
-                               {{ old('is_featured') ? 'checked' : '' }}
-                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <input type="checkbox" name="is_featured" value="1" {{ old('is_featured') ? 'checked' : '' }} class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         <span class="ml-2 text-sm text-gray-700">Featured product</span>
                     </label>
                 </div>
@@ -336,61 +269,116 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Show/hide sale dates based on sale price
-    const salePriceInput = document.getElementById('sale_price');
-    const saleDatesDiv = document.getElementById('saleDates');
-    
-    function toggleSaleDates() {
-        if (salePriceInput.value && parseFloat(salePriceInput.value) > 0) {
-            saleDatesDiv.style.display = 'grid';
-        } else {
-            saleDatesDiv.style.display = 'none';
-        }
-    }
-    
-    salePriceInput.addEventListener('input', toggleSaleDates);
-    toggleSaleDates();
-    
-    // Show/hide stock quantity based on manage stock checkbox
-    const manageStockCheckbox = document.getElementById('manage_stock');
-    const stockQuantityField = document.getElementById('stockQuantityField');
-    
-    manageStockCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            stockQuantityField.classList.remove('hidden');
-        } else {
-            stockQuantityField.classList.add('hidden');
-        }
-    });
-    
-    // Image preview
-    const imageInput = document.getElementById('images');
-    const imagePreview = document.getElementById('imagePreview');
-    
-    imageInput.addEventListener('change', function() {
-        imagePreview.innerHTML = '';
-        
-        for (let i = 0; i < this.files.length; i++) {
-            const file = this.files[i];
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const previewDiv = document.createElement('div');
-                previewDiv.className = 'relative';
-                previewDiv.innerHTML = `
-                    <img src="${e.target.result}" class="w-full h-24 object-cover rounded-lg">
-                    <button type="button" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" onclick="this.parentElement.remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                imagePreview.appendChild(previewDiv);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show/hide sale dates based on sale price
+        const salePriceInput = document.getElementById('sale_price');
+        const saleDatesDiv = document.getElementById('saleDates');
+
+        function toggleSaleDates() {
+            if (salePriceInput.value && parseFloat(salePriceInput.value) > 0) {
+                saleDatesDiv.style.display = 'grid';
+            } else {
+                saleDatesDiv.style.display = 'none';
             }
-            
-            reader.readAsDataURL(file);
+        }
+
+        salePriceInput.addEventListener('input', toggleSaleDates);
+        toggleSaleDates();
+
+        // Show/hide stock quantity based on manage stock checkbox
+        const manageStockCheckbox = document.getElementById('manage_stock');
+        const stockQuantityField = document.getElementById('stockQuantityField');
+
+        manageStockCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                stockQuantityField.classList.remove('hidden');
+            } else {
+                stockQuantityField.classList.add('hidden');
+            }
+        });
+
+        // Image preview and validation
+        const imageInput = document.getElementById('images');
+        const imagePreview = document.getElementById('imagePreview');
+        const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+        const MAX_IMAGES = 5;
+
+        imageInput.addEventListener('change', function() {
+            imagePreview.innerHTML = '';
+
+            // Check number of files
+            if (this.files.length > MAX_IMAGES) {
+                alert(`You can upload maximum ${MAX_IMAGES} images. You selected ${this.files.length} images.`);
+                this.value = '';
+                return;
+            }
+
+            let validFiles = [];
+
+            for (let i = 0; i < this.files.length; i++) {
+                const file = this.files[i];
+
+                // Validate file size
+                if (file.size > MAX_FILE_SIZE) {
+                    alert(`File "${file.name}" is too large. Maximum file size is 2MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB.`);
+                    continue;
+                }
+
+                // Check if it's an image
+                if (!file.type.match('image.*')) {
+                    alert(`File "${file.name}" is not an image.`);
+                    continue;
+                }
+
+                validFiles.push(file);
+
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const previewDiv = document.createElement('div');
+                    previewDiv.className = 'relative group';
+                    previewDiv.innerHTML = `
+                    <img src="${e.target.result}" alt="${file.name}" class="w-full h-32 object-cover rounded-lg border-2 border-gray-200">
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg transition duration-200 flex items-center justify-center">
+                        <button type="button" class="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition duration-200 hover:bg-red-600" onclick="removeImage(this, '${file.name}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-1 truncate">${file.name}</p>
+                    <p class="text-xs text-gray-500">${(file.size / 1024).toFixed(2)} KB</p>
+                `;
+                    imagePreview.appendChild(previewDiv);
+                }
+
+                reader.readAsDataURL(file);
+            }
+
+            // Update the file input with valid files only
+            // Note: We can't directly modify FileList, but we show validation feedback
+            if (validFiles.length !== this.files.length) {
+                this.value = '';
+            }
+        });
+
+        // Scroll to first error if any
+        const errorMessages = document.querySelectorAll('.text-red-600');
+        if (errorMessages.length > 0) {
+            for (let error of errorMessages) {
+                if (error.textContent.trim()) {
+                    error.scrollIntoView({
+                        behavior: 'smooth'
+                        , block: 'center'
+                    });
+                    break;
+                }
+            }
         }
     });
-});
+
+    function removeImage(button, fileName) {
+        button.closest('.relative').remove();
+    }
+
 </script>
 @endpush
 

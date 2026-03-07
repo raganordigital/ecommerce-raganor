@@ -36,7 +36,7 @@ class ProductRequest extends FormRequest
             'sale_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99', 'lt:price'],
             'sale_price_from' => ['nullable', 'date', 'required_with:sale_price'],
             'sale_price_to' => ['nullable', 'date', 'required_with:sale_price', 'after:sale_price_from'],
-            'stock_quantity' => ['required', 'integer', 'min:0'],
+            'stock_quantity' => ['required_if:manage_stock,true', 'nullable', 'integer', 'min:0'],
             'manage_stock' => ['boolean'],
             'is_active' => ['boolean'],
             'is_featured' => ['boolean'],
@@ -58,12 +58,20 @@ class ProductRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.required' => 'Product name is required.',
+            'sku.required' => 'SKU is required.',
             'sku.unique' => 'This SKU is already in use. Please choose a different one.',
+            'description.required' => 'Product description is required.',
+            'price.required' => 'Regular price is required.',
+            'price.numeric' => 'Regular price must be a number.',
             'sale_price.lt' => 'Sale price must be less than regular price.',
             'sale_price_from.required_with' => 'Sale start date is required when sale price is set.',
             'sale_price_to.required_with' => 'Sale end date is required when sale price is set.',
             'sale_price_to.after' => 'Sale end date must be after start date.',
+            'stock_quantity.required_if' => 'Stock quantity is required when tracking stock.',
+            'stock_quantity.integer' => 'Stock quantity must be a whole number.',
             'images.*.max' => 'Each image must not exceed 2MB.',
+            'images.*.image' => 'All files must be valid image files.',
             'images.max' => 'You can upload maximum 5 images per product.',
         ];
     }

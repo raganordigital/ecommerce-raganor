@@ -17,7 +17,10 @@ class CategoryFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'name' => $this->faker->unique()->words(2, true),
+            'description' => $this->faker->paragraph(),
+            'is_active' => true,
+            'sort_order' => 0,
         ];
     }
 }
