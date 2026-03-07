@@ -26,6 +26,7 @@
         <!-- Page Content -->
         <main class="flex-1">
             @yield('content')
+
         </main>
 
         <!-- Footer -->
@@ -43,6 +44,8 @@
                         <ul class="space-y-2 text-sm">
                             <li><a href="{{ route('home') }}" class="text-gray-300 hover:text-white">Home</a></li>
                             <li><a href="{{ route('products.index') }}" class="text-gray-300 hover:text-white">Products</a></li>
+                            <li><a href="{{ route('about') }}" class="text-gray-300 hover:text-white">About Us</a></li>
+                            <li><a href="{{ route('contact') }}" class="text-gray-300 hover:text-white">Contact</a></li>
                             <li><a href="{{ route('cart.index') }}" class="text-gray-300 hover:text-white">Cart</a></li>
                             <li><a href="{{ route('wishlist.index') }}" class="text-gray-300 hover:text-white">Wishlist</a></li>
                         </ul>

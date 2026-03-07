@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Route;
 // Public home page
 Route::get('/', [App\Http\Controllers\Public\HomeController::class, 'index'])->name('home');
 
+// Static pages
+Route::view('/about', 'public.pages.about')->name('about');
+Route::view('/contact', 'public.pages.contact')->name('contact');
+
 // Add a dashboard redirect for authenticated users
 Route::get('/dashboard', function () {
     /** @var \App\Models\User $user */
