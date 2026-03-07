@@ -36,9 +36,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('orders/{order}/update-status', [OrderController::class, 'updateStatus'])
         ->name('orders.update-status');
 
-    // Admin review routes
-    Route::resource('reviews', App\Http\Controllers\Admin\ReviewController::class)->except(['create', 'store', 'edit']);
-    Route::post('reviews/{review}/approve', [App\Http\Controllers\Admin\ReviewController::class, 'approve'])->name('reviews.approve');
-    Route::post('reviews/{review}/reject', [App\Http\Controllers\Admin\ReviewController::class, 'reject'])->name('reviews.reject');
-    Route::post('reviews/bulk/approve', [App\Http\Controllers\Admin\ReviewController::class, 'bulkApprove'])->name('reviews.bulk-approve');
+        // Admin review routes
+Route::resource('reviews', App\Http\Controllers\Admin\ReviewController::class)->except(['create', 'store', 'edit']);
+Route::post('reviews/{review}/approve', [App\Http\Controllers\Admin\ReviewController::class, 'approve'])->name('reviews.approve');
+Route::post('reviews/{review}/reject', [App\Http\Controllers\Admin\ReviewController::class, 'reject'])->name('reviews.reject');
+Route::post('reviews/bulk/approve', [App\Http\Controllers\Admin\ReviewController::class, 'bulkApprove'])->name('reviews.bulk-approve');
 });

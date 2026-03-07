@@ -1,11 +1,6 @@
-<<<<<<< HEAD
 @extends('layouts.app')
 
 @section('content')
-=======
-<x-app-layout>
-    <x-slot name="title">Home - E-Shop</x-slot>
->>>>>>> b706284123987b85a236d90c1e3ddb9e481ae859
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -54,11 +49,7 @@
 
             <!-- Featured Products Section -->
             @if($featuredProducts->count() > 0)
-<<<<<<< HEAD
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg mb-8">
-=======
             <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
->>>>>>> b706284123987b85a236d90c1e3ddb9e481ae859
                 <div class="p-6 lg:p-8 bg-white border-b border-gray-200">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-900">Featured Products</h2>
@@ -185,15 +176,6 @@
                             <input type="email" placeholder="Enter your email" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
                                 Subscribe
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-@endsection
-
                             </button>
                         </form>
                     </div>
