@@ -44,6 +44,10 @@ Route::get('/cart', function () {
 Route::post('/cart/add', [App\Http\Controllers\Public\CartController::class, 'add'])->name('cart.add');
 // Include authentication routes (Breeze)
 
+// Add this with your other cart routes
+Route::post('/cart/buy-now', [App\Http\Controllers\Public\CartController::class, 'buyNow'])
+    ->name('cart.buy-now');
+
 // Checkout routes
 Route::get('/checkout', [App\Http\Controllers\Public\CheckoutController::class, 'index'])
     ->middleware('auth')

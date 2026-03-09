@@ -11,7 +11,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class OrderConfirmation extends Mailable
+class AdminNewOrderNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -22,17 +22,17 @@ class OrderConfirmation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Order Confirmed #'.$this->order->order_number.' — '.config('app.name'),
+            subject: '🛒 New Order #'.$this->order->order_number.' — $'.number_format((float) $this->order->total, 2),
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.orders.confirmation',
+            view: 'emails.admin.new-order-simple', // Using simple template for testing
             with: [
-                'order'    => $this->order,
-                'orderUrl' => route('orders.show', $this->order),
+                'order'      => $this->order,
+                'adminUrl'   => route('admin.orders.show', $this->order),
             ],
         );
     }

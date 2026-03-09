@@ -12,22 +12,17 @@ use Illuminate\View\View;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of products.
-     */
     public function index(Request $request): View
     {
         $query = Product::with(['categories', 'primaryImage'])
             ->where('is_active', true);
 
-        // Category filter
         if ($request->filled('category')) {
             $query->whereHas('categories', function ($q) use ($request) {
                 $q->where('categories.slug', $request->get('category'));
             });
         }
 
-        // Search
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
@@ -36,7 +31,6 @@ class ProductController extends Controller
             });
         }
 
-        // Sort
         switch ($request->get('sort', 'newest')) {
             case 'price_low':
                 $query->orderBy('price', 'asc');
@@ -50,7 +44,7 @@ class ProductController extends Controller
             case 'name_desc':
                 $query->orderBy('name', 'desc');
                 break;
-            default: // newest
+            default:
                 $query->latest();
                 break;
         }
@@ -65,22 +59,23 @@ class ProductController extends Controller
         return view('public.products.index', compact('products', 'categories'));
     }
 
-    /**
-     * Display the specified product.
-     */
     public function show(Product $product): View
     {
         if (! $product->is_active) {
             abort(404);
         }
 
-        // Increment view count
         $product->increment('views_count');
 
-        // Load relationships
-        $product->load(['categories', 'images']);
+        // Load all needed relationships — reviews with user for display
+        $product->load([
+            'categories',
+            'images',
+            'reviews' => function ($q) {
+                $q->with('user')->latest();
+            },
+        ]);
 
-        // Get related products (same categories)
         $relatedProducts = Product::with('primaryImage')
             ->where('is_active', true)
             ->where('id', '!=', $product->id)

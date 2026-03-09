@@ -11,49 +11,34 @@ class CartPage extends Component
 {
     protected CartService $cartService;
 
-    protected $listeners = [
-        'cart-updated' => '$refresh',
-    ];
-
-    public function boot(CartService $cartService)
+    public function boot(CartService $cartService): void
     {
         $this->cartService = $cartService;
     }
 
-    public function updateQuantity($productId, $quantity)
+    public function updateQuantity(int $productId, int $quantity): void
     {
-        $this->cartService->update($productId, $quantity);
-        $this->dispatch('cart-updated', cartCount: $this->cartService->getTotalQuantity());
+        $result = $this->cartService->update($productId, $quantity);
+        $this->dispatch('cart-count-updated', count: $result['cartCount']);
     }
 
-    public function removeItem($productId)
+    public function removeItem(int $productId): void
     {
-        $this->cartService->remove($productId);
-        $this->dispatch('cart-updated', cartCount: $this->cartService->getTotalQuantity());
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Item removed from cart.',
-        ]);
+        $result = $this->cartService->remove($productId);
+        $this->dispatch('cart-count-updated', count: $result['cartCount']);
     }
 
-    public function clearCart()
+    public function clearCart(): void
     {
         $this->cartService->clear();
-        $this->dispatch('cart-updated', cartCount: 0);
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Cart cleared successfully.',
-        ]);
+        $this->dispatch('cart-count-updated', count: 0);
     }
 
     public function render()
     {
-        $cartItems = $this->cartService->getContent();
-        $subtotal = $this->cartService->getSubtotal();
-
         return view('livewire.cart.cart-page', [
-            'cartItems' => $cartItems,
-            'subtotal' => $subtotal,
+            'cartItems' => $this->cartService->getContent(),
+            'subtotal'  => $this->cartService->getSubtotal(),
         ]);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Cart;
 
 use App\Services\CartService;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class CartCounter extends Component
@@ -13,23 +14,20 @@ class CartCounter extends Component
 
     protected CartService $cartService;
 
-    protected $listeners = [
-        'cart-updated' => 'updateCount',
-    ];
-
-    public function boot(CartService $cartService)
+    public function boot(CartService $cartService): void
     {
         $this->cartService = $cartService;
     }
 
-    public function mount()
+    public function mount(): void
     {
         $this->count = $this->cartService->getTotalQuantity();
     }
 
-    public function updateCount($cartCount)
+    #[On('cart-updated')]
+    public function refresh(): void
     {
-        $this->count = $cartCount;
+        $this->count = $this->cartService->getTotalQuantity();
     }
 
     public function render()

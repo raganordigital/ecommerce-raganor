@@ -15,9 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => AdminMiddleware::class,
         ]);
+
+        // ✅ Must be INSIDE this callback, not outside
+        $middleware->validateCsrfTokens(except: [
+            'stripe/webhook',
+        ]);
     })
     ->withBindings([
-        // Register CartService as a singleton
         App\Services\CartService::class => function ($app) {
             return new App\Services\CartService;
         },

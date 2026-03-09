@@ -352,6 +352,8 @@ class ProductController extends Controller
         }
     }
 
+    
+
     /**
      * Reorder images.
      */

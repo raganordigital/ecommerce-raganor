@@ -24,40 +24,43 @@ class AddToCart extends Component
         'quantity' => 'required|integer|min:1|max:999',
     ];
 
-    public function boot(CartService $cartService)
+    public function boot(CartService $cartService): void
     {
         $this->cartService = $cartService;
     }
 
-    /**
-     * Add product to cart
-     */
-    public function addToCart()
+    public function addToCart(): void
     {
         $this->validate();
 
         $result = $this->cartService->add($this->product, $this->quantity);
 
         if ($result['success']) {
-            $this->dispatch('cart-updated', cartCount: $result['cartCount']);
-            // Notification removed - implement toast system if needed
-        } else {
-            // Notification removed - implement toast system if needed
+            // Dispatch browser event with the new count in payload
+            // Alpine.js on cart-counter catches this instantly — no Livewire round-trip
+            $this->dispatch('cart-count-updated', count: $result['cartCount']);
         }
     }
 
-    /**
-     * Quick add single item
-     */
-    public function quickAdd()
+    public function quickAdd(): void
     {
         $this->quantity = 1;
         $this->addToCart();
     }
 
-    /**
-     * Render the component
-     */
+    public function buyNow(): void
+    {
+        $this->quantity = 1;
+        $this->validate();
+
+        $result = $this->cartService->add($this->product, $this->quantity);
+
+        if ($result['success']) {
+            $this->dispatch('cart-count-updated', count: $result['cartCount']);
+            $this->redirect(route('checkout.index'));
+        }
+    }
+
     public function render()
     {
         return view('livewire.cart.add-to-cart');

@@ -14,52 +14,43 @@ class WishlistButton extends Component
 
     public bool $inWishlist = false;
 
-    protected $listeners = ['wishlist-updated' => 'checkWishlistStatus'];
-
-    public function mount()
+    public function mount(): void
     {
-        $this->checkWishlistStatus();
+        $this->inWishlist = $this->isInWishlist();
     }
 
-    /**
-     * Check if product is in user's wishlist.
-     */
-    public function checkWishlistStatus(): void
-    {
-        if (auth()->check()) {
-            $this->inWishlist = Wishlist::where('user_id', auth()->id())
-                ->where('product_id', $this->product->id)
-                ->exists();
-        }
-    }
-
-    /**
-     * Toggle wishlist status.
-     */
-    public function toggle()
+    public function toggle(): void
     {
         if (! auth()->check()) {
-            return redirect()->route('login');
+            $this->redirect(route('login'));
+            return;
         }
 
         if ($this->inWishlist) {
             Wishlist::where('user_id', auth()->id())
                 ->where('product_id', $this->product->id)
                 ->delete();
-
             $this->inWishlist = false;
-            $this->dispatch('wishlist-updated');
-            // Notification removed - implement toast system if needed
         } else {
-            Wishlist::create([
-                'user_id' => auth()->id(),
+            Wishlist::firstOrCreate([
+                'user_id'    => auth()->id(),
                 'product_id' => $this->product->id,
             ]);
-
             $this->inWishlist = true;
-            $this->dispatch('wishlist-updated');
-            // Notification removed - implement toast system if needed
         }
+
+        $newCount = Wishlist::where('user_id', auth()->id())->count();
+
+        // Dispatch browser event — Alpine on wishlist-counter.blade.php catches this instantly
+        $this->dispatch('wishlist-count-updated', count: $newCount);
+    }
+
+    private function isInWishlist(): bool
+    {
+        return auth()->check()
+            && Wishlist::where('user_id', auth()->id())
+                ->where('product_id', $this->product->id)
+                ->exists();
     }
 
     public function render()

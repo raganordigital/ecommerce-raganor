@@ -15,42 +15,32 @@ class OrderStatusUpdated extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct(
         public Order $order
     ) {}
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
+        $status = $this->order->status instanceof \BackedEnum
+            ? ucfirst($this->order->status->value)
+            : ucfirst($this->order->status);
+
         return new Envelope(
-            subject: 'Order Status Updated #'.$this->order->order_number,
+            subject: 'Your Order is '.$status.' — #'.$this->order->order_number,
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.orders.status-updated',
+            view: 'emails.orders.status-updated',
             with: [
-                'order' => $this->order,
+                'order'    => $this->order,
                 'orderUrl' => route('orders.show', $this->order),
             ],
         );
     }
 
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
     public function attachments(): array
     {
         return [];
