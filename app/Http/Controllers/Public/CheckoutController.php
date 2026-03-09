@@ -9,10 +9,12 @@ use App\Mail\AdminNewOrderNotification;
 use App\Mail\OrderConfirmation;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
+use App\Models\Product;
 use App\Services\CartService;
 use App\Services\OrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
@@ -30,23 +32,95 @@ class CheckoutController extends Controller
         $this->orderService = $orderService;
     }
 
-    public function index(): View|RedirectResponse
-    {
-        if ($this->cartService->getTotalQuantity() === 0) {
-            return redirect()->route('cart.index')
-                ->with('error', 'Your cart is empty.');
-        }
-
-        $cartItems = $this->cartService->getContent();
-        $subtotal  = $this->cartService->getSubtotal();
-        $user      = auth()->user();
-
-        return view('public.checkout.index', compact('cartItems', 'subtotal', 'user'));
-    }
-
-    public function process(Request $request): RedirectResponse
+    /**
+     * Handle Buy Now request - stores product in session and redirects to checkout
+     */
+    public function buyNow(Request $request): RedirectResponse
     {
         $request->validate([
+            'product_id' => ['required', 'exists:products,id'],
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $product = Product::with('primaryImage')->findOrFail($request->product_id);
+
+        // Store in session - this bypasses the cart completely
+        session(['buy_now_item' => [
+            'product_id' => $product->id,
+            'quantity' => $request->quantity,
+            'price' => $product->current_price,
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'image' => $product->primaryImage?->thumbnail_path,
+        ]]);
+
+        // Redirect to the Livewire checkout page
+        return redirect()->route('checkout.livewire')
+            ->with('success', 'Proceeding to checkout with your selected item.');
+    }
+
+    /**
+     * Display checkout page - works for both cart and buy now
+     */
+    public function index(Request $request): View|RedirectResponse
+    {
+        // Check if this is a buy now checkout (has session data)
+        $buyNowItem = session('buy_now_item');
+
+        if ($buyNowItem) {
+            // Buy now checkout - use session data
+            $product = Product::with('primaryImage')->find($buyNowItem['product_id']);
+            if (!$product) {
+                session()->forget('buy_now_item');
+                return redirect()->route('cart.index')->with('error', 'Product not found.');
+            }
+
+            // Create a collection with the buy now item
+            $cartItems = collect([
+                (object) [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->current_price,
+                    'quantity' => $buyNowItem['quantity'],
+                    'attributes' => (object) [
+                        'sku' => $product->sku,
+                        'image' => $product->primaryImage?->thumbnail_path,
+                        'slug' => $product->slug,
+                    ],
+                ]
+            ]);
+
+            $subtotal = $product->current_price * $buyNowItem['quantity'];
+            $checkoutType = 'buy_now';
+        } else {
+            // Regular cart checkout
+            if ($this->cartService->getTotalQuantity() === 0) {
+                return redirect()->route('cart.index')
+                    ->with('error', 'Your cart is empty.');
+            }
+
+            $cartItems = $this->cartService->getContent();
+            $subtotal = $this->cartService->getSubtotal();
+            $checkoutType = 'cart';
+        }
+
+        $user = auth()->user();
+
+        return view('public.checkout.livewire-index', compact('cartItems', 'subtotal', 'user', 'checkoutType'));
+    }
+
+    /**
+     * Process checkout - creates Stripe session but NOT the order yet
+     */
+    /**
+     * Process checkout - creates Stripe session but NOT the order yet
+     */
+    /**
+     * Process checkout - creates Stripe session but NOT the order yet
+     */
+    public function process(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
             'shipping_name'     => ['required', 'string', 'max:255'],
             'shipping_email'    => ['required', 'email', 'max:255'],
             'shipping_phone'    => ['required', 'string', 'max:20'],
@@ -58,25 +132,62 @@ class CheckoutController extends Controller
             'billing_same'      => ['boolean'],
         ]);
 
-        try {
-            $order = $this->orderService->createOrder($request->all());
+        // Store shipping info in session
+        session(['checkout_shipping' => $validated]);
 
+        // Determine checkout type from session
+        $buyNowItem = session('buy_now_item');
+        $checkoutType = $buyNowItem ? 'buy_now' : 'cart';
+
+        try {
+            // Create a temporary checkout session ID
+            $checkoutSessionId = uniqid('checkout_', true);
+            session(['checkout_session_id' => $checkoutSessionId]);
+
+            // Create Stripe session
             Stripe::setApiKey(config('cashier.secret'));
 
-            $lineItems  = [];
-            $cartItems  = $this->cartService->getContent();
+            $lineItems = [];
 
-            foreach ($cartItems as $item) {
+            if ($checkoutType === 'buy_now' && $buyNowItem) {
                 $lineItems[] = [
                     'price_data' => [
                         'currency'     => 'usd',
                         'product_data' => [
-                            'name'        => $item->name,
-                            'description' => "SKU: {$item->attributes->sku}",
+                            'name'        => $buyNowItem['name'],
+                            'description' => "SKU: {$buyNowItem['sku']}",
                         ],
-                        'unit_amount' => (int) ($item->price * 100),
+                        'unit_amount' => (int) ($buyNowItem['price'] * 100),
                     ],
-                    'quantity' => $item->quantity,
+                    'quantity' => $buyNowItem['quantity'],
+                ];
+
+                $metadata = [
+                    'checkout_type' => 'buy_now',
+                    'checkout_session_id' => $checkoutSessionId,
+                    'product_id' => $buyNowItem['product_id'],
+                    'quantity' => $buyNowItem['quantity'],
+                    'price' => $buyNowItem['price'],
+                ];
+            } else {
+                $cartItems = $this->cartService->getContent();
+                foreach ($cartItems as $item) {
+                    $lineItems[] = [
+                        'price_data' => [
+                            'currency'     => 'usd',
+                            'product_data' => [
+                                'name'        => $item->name,
+                                'description' => "SKU: {$item->attributes->sku}",
+                            ],
+                            'unit_amount' => (int) ($item->price * 100),
+                        ],
+                        'quantity' => $item->quantity,
+                    ];
+                }
+
+                $metadata = [
+                    'checkout_type' => 'cart',
+                    'checkout_session_id' => $checkoutSessionId,
                 ];
             }
 
@@ -84,100 +195,163 @@ class CheckoutController extends Controller
                 'payment_method_types' => ['card'],
                 'line_items'           => $lineItems,
                 'mode'                 => 'payment',
-                'success_url'          => route('checkout.success', ['order' => $order->order_number]),
-                'cancel_url'           => route('checkout.cancel', ['order' => $order->order_number]),
-                'customer_email'       => $request->shipping_email,
-                'metadata'             => [
-                    'order_id'     => $order->id,
-                    'order_number' => $order->order_number,
-                ],
+                'success_url'          => route('checkout.success') . '?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url'           => route('checkout.cancel') . '?session_id={CHECKOUT_SESSION_ID}',
+                'customer_email'       => $validated['shipping_email'],
+                'metadata'             => $metadata,
             ]);
 
-            $order->update(['payment_id' => $session->id]);
+            session(['stripe_session_id' => $session->id]);
 
             return redirect($session->url);
-
         } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
+            Log::error('Failed to create Stripe session', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->route('checkout.livewire')
                 ->with('error', 'Failed to process checkout: ' . $e->getMessage());
         }
     }
 
     /**
-     * Stripe redirects here after successful payment.
-     * We verify the session directly with Stripe API as a reliable fallback
-     * in case the webhook hasn't fired yet (race condition).
+     * Stripe redirects here after successful payment
      */
-    public function success(Request $request, string $orderNumber): View|RedirectResponse
+    public function success(Request $request): View|RedirectResponse
     {
-        Log::info('✅ SUCCESS PAGE ACCESSED', ['order_number' => $orderNumber]);
-        
-        $order = Order::where('order_number', $orderNumber)
-            ->with('items')
-            ->firstOrFail();
+        $sessionId = $request->get('session_id');
 
-        Log::info('📦 Order found in success page', [
-            'order_id' => $order->id,
-            'payment_status' => $order->payment_status,
-            'has_payment_id' => !empty($order->payment_id)
-        ]);
+        if (!$sessionId) {
+            return redirect()->route('home')->with('error', 'Invalid checkout session.');
+        }
 
-        // Verify payment directly with Stripe if still pending
-        if ($order->payment_status === PaymentStatus::PENDING && $order->payment_id) {
-            Log::info('🔄 Order is pending, checking with Stripe');
-            
-            try {
-                Stripe::setApiKey(config('cashier.secret'));
-                $session = Session::retrieve($order->payment_id);
+        try {
+            Stripe::setApiKey(config('cashier.secret'));
+            $stripeSession = Session::retrieve($sessionId);
 
-                Log::info('💳 Stripe session retrieved', [
-                    'payment_status' => $session->payment_status
-                ]);
+            // Check if order already exists for this session
+            $order = Order::where('stripe_session_id', $sessionId)->first();
 
-                if ($session->payment_status === 'paid') {
-                    Log::info('✅ Payment confirmed, updating order and sending emails');
-                    
-                    $order->update([
-                        'payment_status' => 'paid',
-                        'status'         => 'processing',
-                    ]);
-                    $order->refresh()->load(['items', 'user']);
-                    
-                    Log::info('📧 About to call sendOrderEmails from success page');
-                    $this->sendOrderEmails($order);
+            if (!$order && $stripeSession->payment_status === 'paid') {
+                // Create order only after successful payment
+                $shippingData = session('checkout_shipping');
+
+                if (!$shippingData) {
+                    throw new \Exception('Shipping information not found in session.');
                 }
-            } catch (\Exception $e) {
-                Log::error('❌ Stripe verification failed', ['error' => $e->getMessage()]);
+
+                if ($stripeSession->metadata['checkout_type'] === 'buy_now') {
+                    $order = $this->createBuyNowOrder($shippingData, [
+                        'product_id' => $stripeSession->metadata['product_id'],
+                        'quantity' => (int) $stripeSession->metadata['quantity'],
+                        'price' => (float) $stripeSession->metadata['price'],
+                    ], $sessionId);
+                } else {
+                    $order = $this->orderService->createOrder($shippingData, $sessionId);
+                }
+
+                // Clear cart and session data
+                if ($stripeSession->metadata['checkout_type'] === 'cart') {
+                    $this->cartService->clear();
+                }
+
+                session()->forget(['buy_now_item', 'checkout_shipping', 'stripe_session_id', 'checkout_session_id']);
+
+                // Send confirmation emails
+                $this->sendOrderEmails($order);
             }
-        } else {
-            Log::info('⏭️ Skipping Stripe verification', [
-                'reason' => $order->payment_status !== PaymentStatus::PENDING ? 'already_paid' : 'no_payment_id'
+
+            if (!$order) {
+                throw new \Exception('Failed to create order.');
+            }
+
+            return view('public.checkout.success', compact('order'));
+        } catch (\Exception $e) {
+            Log::error('Failed to process successful payment', [
+                'error' => $e->getMessage(),
+                'session_id' => $sessionId
             ]);
-        }
 
-        // Clear cart only after confirmed payment
-        if ($order->payment_status === PaymentStatus::PAID) {
-            Log::info('🧹 Clearing cart for paid order');
-            $this->cartService->clear();
+            return redirect()->route('home')
+                ->with('error', 'There was an issue processing your order. Please contact support.');
         }
-
-        return view('public.checkout.success', compact('order'));
     }
 
-    public function cancel(Request $request, string $orderNumber): RedirectResponse
+    public function cancel(Request $request): RedirectResponse
     {
-        $order = Order::where('order_number', $orderNumber)->firstOrFail();
-        $order->update(['status' => 'cancelled']);
+        $sessionId = $request->get('session_id');
+
+        // Clear session data
+        session()->forget(['buy_now_item', 'checkout_shipping', 'stripe_session_id', 'checkout_session_id']);
 
         return redirect()->route('cart.index')
             ->with('error', 'Checkout was cancelled. Please try again.');
     }
 
     /**
-     * Stripe webhook — primary payment confirmation path.
-     * Requires STRIPE_WEBHOOK_SECRET in .env to work.
-     * Run: stripe listen --forward-to localhost:8000/stripe/webhook
+     * Create order for buy now (bypasses cart)
+     */
+    protected function createBuyNowOrder(array $data, array $buyNowItem, string $stripeSessionId): Order
+    {
+        $subtotal = $buyNowItem['price'] * $buyNowItem['quantity'];
+        $tax = $subtotal * 0.10; // 10% tax
+        $total = $subtotal + $tax;
+
+        $product = Product::find($buyNowItem['product_id']);
+
+        $order = Order::create([
+            'user_id'        => auth()->id(),
+            'status'         => 'processing',
+            'payment_status' => 'paid',
+            'payment_method' => 'stripe',
+            'stripe_session_id' => $stripeSessionId,
+
+            'shipping_name'     => $data['shipping_name'],
+            'shipping_email'    => $data['shipping_email'],
+            'shipping_phone'    => $data['shipping_phone'],
+            'shipping_address'  => $data['shipping_address'],
+            'shipping_city'     => $data['shipping_city'],
+            'shipping_state'    => $data['shipping_state'] ?? null,
+            'shipping_zipcode'  => $data['shipping_zipcode'],
+            'shipping_country'  => $data['shipping_country'],
+
+            'billing_name'     => $data['shipping_name'],
+            'billing_email'    => $data['shipping_email'],
+            'billing_phone'    => $data['shipping_phone'],
+            'billing_address'  => $data['shipping_address'],
+            'billing_city'     => $data['shipping_city'],
+            'billing_state'    => $data['shipping_state'] ?? null,
+            'billing_zipcode'  => $data['shipping_zipcode'],
+            'billing_country'  => $data['shipping_country'],
+
+            'subtotal'      => $subtotal,
+            'tax'           => $tax,
+            'shipping_cost' => 0,
+            'discount'      => 0,
+            'total'         => $total,
+        ]);
+
+        // Create order item
+        $order->items()->create([
+            'product_id'  => $buyNowItem['product_id'],
+            'product_name' => $product->name,
+            'product_sku' => $product->sku,
+            'price'       => $buyNowItem['price'],
+            'quantity'    => $buyNowItem['quantity'],
+            'subtotal'    => $subtotal,
+        ]);
+
+        // Update stock
+        if ($product && $product->manage_stock) {
+            $product->decreaseStock($buyNowItem['quantity']);
+        }
+
+        return $order;
+    }
+
+    /**
+     * Stripe webhook handler
      */
     public function webhook(Request $request)
     {
@@ -185,164 +359,216 @@ class CheckoutController extends Controller
             'headers' => $request->headers->all(),
             'content' => $request->getContent()
         ]);
-        
-        $payload       = $request->getContent();
-        $sigHeader     = $request->header('Stripe-Signature');
+
+        $payload = $request->getContent();
+        $sigHeader = $request->header('Stripe-Signature');
         $endpointSecret = config('cashier.webhook.secret');
 
-        // If no webhook secret configured, skip signature verification in local dev
         if (empty($endpointSecret)) {
-            Log::warning('Stripe webhook secret not configured. Set STRIPE_WEBHOOK_SECRET in .env');
-            $event = \Stripe\Event::constructFrom(
-                json_decode($payload, true)
-            );
+            Log::warning('Stripe webhook secret not configured.');
+            $event = \Stripe\Event::constructFrom(json_decode($payload, true));
         } else {
             try {
                 $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $endpointSecret);
             } catch (\UnexpectedValueException $e) {
-                Log::error('Invalid webhook payload', ['error' => $e->getMessage()]);
                 return response()->json(['error' => 'Invalid payload'], 400);
             } catch (\Stripe\Exception\SignatureVerificationException $e) {
-                Log::error('Invalid webhook signature', ['error' => $e->getMessage()]);
                 return response()->json(['error' => 'Invalid signature'], 400);
             }
         }
-
-        Log::info('📨 Webhook event', ['type' => $event->type]);
 
         switch ($event->type) {
             case 'checkout.session.completed':
                 $this->handleSuccessfulPayment($event->data->object);
                 break;
-
             case 'checkout.session.expired':
                 $this->handleExpiredPayment($event->data->object);
                 break;
-            
-            default:
-                Log::info('Unhandled webhook type', ['type' => $event->type]);
         }
 
         return response()->json(['status' => 'success']);
     }
 
-    protected function handleSuccessfulPayment($session): void
+    protected function handleSuccessfulPayment($stripeSession): void
     {
-        Log::info('💰 handleSuccessfulPayment CALLED', [
-            'session_id' => $session->id,
-            'payment_status' => $session->payment_status,
-            'metadata' => $session->metadata ?? []
-        ]);
-        
-        $order = Order::where('payment_id', $session->id)->first();
+        // Check if order already exists
+        $order = Order::where('stripe_session_id', $stripeSession->id)->first();
 
-        Log::info('📦 Order lookup result', [
-            'found' => $order ? 'yes' : 'no',
-            'order_id' => $order?->id,
-            'current_payment_status' => $order?->payment_status
-        ]);
+        if ($order) {
+            Log::info('Order already exists for this session', ['session_id' => $stripeSession->id]);
+            return;
+        }
 
-        if ($order && $order->payment_status !== PaymentStatus::PAID) {
-            Log::info('✅ Conditions met, updating order and sending emails');
-            
-            $order->update([
-                'payment_status' => 'paid',
-                'status'         => 'processing',
-            ]);
+        try {
+            // For webhook, we don't have session data, so we need to use metadata
+            $shippingData = [
+                'shipping_name' => $stripeSession->customer_details->name ?? 'Customer',
+                'shipping_email' => $stripeSession->customer_email,
+                'shipping_phone' => $stripeSession->customer_details->phone ?? '',
+                'shipping_address' => $stripeSession->customer_details->address->line1 ?? '',
+                'shipping_city' => $stripeSession->customer_details->address->city ?? '',
+                'shipping_state' => $stripeSession->customer_details->address->state ?? '',
+                'shipping_zipcode' => $stripeSession->customer_details->address->postal_code ?? '',
+                'shipping_country' => $stripeSession->customer_details->address->country ?? '',
+            ];
 
-            $order->load(['items', 'user']);
+            if ($stripeSession->metadata['checkout_type'] === 'buy_now') {
+                $order = $this->createBuyNowOrder($shippingData, [
+                    'product_id' => $stripeSession->metadata['product_id'],
+                    'quantity' => (int) $stripeSession->metadata['quantity'],
+                    'price' => (float) $stripeSession->metadata['price'],
+                ], $stripeSession->id);
 
-            Log::info('📧 About to call sendOrderEmails from webhook');
-            $this->sendOrderEmails($order);
-            Log::info('📧 Finished calling sendOrderEmails from webhook');
-        } else {
-            Log::info('❌ Conditions NOT met', [
-                'order_exists' => $order ? 'yes' : 'no',
-                'payment_status_match' => $order ? ($order->payment_status !== PaymentStatus::PAID ? 'yes' : 'no') : 'n/a',
-                'order_payment_status' => $order?->payment_status
+                $this->sendOrderEmails($order);
+            } else {
+                // For cart checkout, we need to have stored cart data somewhere
+                // This is a limitation - better to rely on the success redirect
+                Log::warning('Cart checkout webhook not fully implemented', ['session_id' => $stripeSession->id]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to create order from webhook', [
+                'error' => $e->getMessage(),
+                'session_id' => $stripeSession->id
             ]);
         }
     }
 
-    /**
-     * Send order confirmation to customer and notification to admin.
-     * Called from both the webhook handler and the success() fallback
-     * to ensure emails fire exactly once regardless of which path confirms payment.
-     * The upstream callers are responsible for guarding against double-sends
-     * by only calling this when payment_status transitions to 'paid'.
-     */
-    protected function sendOrderEmails(Order $order): void
-{
-    Log::info('📧 sendOrderEmails STARTED', [
-        'order_id' => $order->id,
-        'customer_email' => $order->user->email,
-        'admin_email' => config('mail.admin_address'),
-        'admin_email_exists' => !empty(config('mail.admin_address')) ? 'yes' : 'no'
-    ]);
-
-    // Customer confirmation
-    try {
-        Log::info('📨 Attempting to send customer email', [
-            'to' => $order->user->email
-        ]);
-        
-        Mail::to($order->user->email)
-            ->send(new OrderConfirmation($order));
-        
-        Log::info('✅ Customer email sent successfully', [
-            'order_id' => $order->id,
-            'email' => $order->user->email
-        ]);
-    } catch (\Throwable $e) {
-        Log::error('❌ Customer email failed', [
-            'order_id' => $order->id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
+    protected function handleExpiredPayment($stripeSession): void
+    {
+        Log::info('Payment session expired', ['session_id' => $stripeSession->id]);
     }
 
-    // Add a small delay to avoid Mailtrap rate limiting
-    sleep(2); // Wait 2 seconds
-
-    // Admin new-order notification
-    $adminEmail = config('mail.admin_address');
-    if ($adminEmail) {
+    protected function sendOrderEmails(Order $order): void
+    {
+        // Customer confirmation
         try {
-            Log::info('📨 Attempting to send admin email', [
-                'order_id' => $order->id,
-                'admin_email' => $adminEmail
-            ]);
-            
-            Mail::to($adminEmail)
-                ->send(new AdminNewOrderNotification($order));
-            
-            Log::info('✅ Admin email sent successfully', [
-                'order_id' => $order->id,
-                'admin_email' => $adminEmail
-            ]);
+            Mail::to($order->shipping_email)
+                ->send(new OrderConfirmation($order));
         } catch (\Throwable $e) {
-            Log::error('❌ Admin order notification email failed', [
+            Log::error('❌ Customer email failed', [
                 'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        sleep(1); // Avoid rate limiting
+
+        // Admin notification
+        $adminEmail = config('mail.admin_address');
+        if ($adminEmail) {
+            try {
+                Mail::to($adminEmail)
+                    ->send(new AdminNewOrderNotification($order));
+            } catch (\Throwable $e) {
+                Log::error('❌ Admin email failed', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+    }
+
+
+    /**
+     * Process checkout with data already in session (for Livewire)
+     */
+    public function processWithData(): RedirectResponse
+    {
+        // Get validated data from session
+        $validated = session('checkout_validated_data');
+
+        if (!$validated) {
+            return redirect()->route('checkout.livewire')
+                ->with('error', 'Checkout data not found. Please try again.');
+        }
+
+        // Clear the session data
+        session()->forget('checkout_validated_data');
+
+        // Store shipping info in session
+        session(['checkout_shipping' => $validated]);
+
+        // Determine checkout type from session
+        $buyNowItem = session('buy_now_item');
+        $checkoutType = $buyNowItem ? 'buy_now' : 'cart';
+
+        try {
+            // Create a temporary checkout session ID
+            $checkoutSessionId = uniqid('checkout_', true);
+            session(['checkout_session_id' => $checkoutSessionId]);
+
+            // Create Stripe session
+            Stripe::setApiKey(config('cashier.secret'));
+
+            $lineItems = [];
+
+            if ($checkoutType === 'buy_now' && $buyNowItem) {
+                // Single product for buy now
+                $lineItems[] = [
+                    'price_data' => [
+                        'currency'     => 'usd',
+                        'product_data' => [
+                            'name'        => $buyNowItem['name'],
+                            'description' => "SKU: {$buyNowItem['sku']}",
+                        ],
+                        'unit_amount' => (int) ($buyNowItem['price'] * 100),
+                    ],
+                    'quantity' => $buyNowItem['quantity'],
+                ];
+
+                $metadata = [
+                    'checkout_type' => 'buy_now',
+                    'checkout_session_id' => $checkoutSessionId,
+                    'product_id' => $buyNowItem['product_id'],
+                    'quantity' => $buyNowItem['quantity'],
+                    'price' => $buyNowItem['price'],
+                ];
+            } else {
+                // Multiple products from cart
+                $cartItems = $this->cartService->getContent();
+                foreach ($cartItems as $item) {
+                    $lineItems[] = [
+                        'price_data' => [
+                            'currency'     => 'usd',
+                            'product_data' => [
+                                'name'        => $item->name,
+                                'description' => "SKU: {$item->attributes->sku}",
+                            ],
+                            'unit_amount' => (int) ($item->price * 100),
+                        ],
+                        'quantity' => $item->quantity,
+                    ];
+                }
+
+                $metadata = [
+                    'checkout_type' => 'cart',
+                    'checkout_session_id' => $checkoutSessionId,
+                ];
+            }
+
+            $session = Session::create([
+                'payment_method_types' => ['card'],
+                'line_items'           => $lineItems,
+                'mode'                 => 'payment',
+                'success_url'          => route('checkout.success') . '?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url'           => route('checkout.cancel') . '?session_id={CHECKOUT_SESSION_ID}',
+                'customer_email'       => $validated['shipping_email'],
+                'metadata'             => $metadata,
+            ]);
+
+            // Store Stripe session ID
+            session(['stripe_session_id' => $session->id]);
+
+            // Redirect to Stripe
+            return redirect($session->url);
+        } catch (\Exception $e) {
+            Log::error('Failed to create Stripe session', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-        }
-    } else {
-        Log::warning('⚠️ Admin email not configured');
-    }
-    
-    Log::info('📧 sendOrderEmails COMPLETED', ['order_id' => $order->id]);
-}
 
-    protected function handleExpiredPayment($session): void
-    {
-        Log::info('⏰ handleExpiredPayment CALLED', ['session_id' => $session->id]);
-        
-        $order = Order::where('payment_id', $session->id)->first();
-
-        if ($order) {
-            $order->update(['status' => 'cancelled']);
-            Log::info('Order cancelled due to expired payment', ['order_id' => $order->id]);
+            return redirect()->route('checkout.livewire')
+                ->with('error', 'Failed to process checkout: ' . $e->getMessage());
         }
     }
 }

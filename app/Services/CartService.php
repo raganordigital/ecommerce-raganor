@@ -141,4 +141,12 @@ class CartService
     {
         $this->getCart()->clear();
     }
+
+    /**
+     * Get a specific item from the cart
+     */
+    public function getItem(int $productId): ?\Darryldecode\Cart\ItemCollection
+    {
+        return $this->getCart()->get($productId);
+    }
 }

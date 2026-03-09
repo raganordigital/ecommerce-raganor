@@ -32,48 +32,65 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [App\Http\Controllers\ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Public product routes (we'll create these controllers later)
+// Public product routes
 Route::get('/products', [PublicProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product:slug}', [PublicProductController::class, 'show'])->name('products.show');
-// Cart routes
-Route::get('/cart', function () {
-    return view('public.cart.index');
-})->name('cart.index');
 
-// Add this line - POST route for adding items to cart
-Route::post('/cart/add', [App\Http\Controllers\Public\CartController::class, 'add'])->name('cart.add');
-// Include authentication routes (Breeze)
+// ==================== CART ROUTES ====================
+Route::prefix('cart')->name('cart.')->group(function () {
+    // View cart
+    Route::get('/', [App\Http\Controllers\Public\CartController::class, 'index'])->name('index');
+    
+    // Add to cart
+    Route::post('/add', [App\Http\Controllers\Public\CartController::class, 'add'])->name('add');
+    
+    // Buy now - clears cart and adds single item
+    Route::post('/buy-now', [App\Http\Controllers\Public\CartController::class, 'buyNow'])->name('buy-now');
+    
+    // Update quantity
+    Route::post('/update/{id}', [App\Http\Controllers\Public\CartController::class, 'updateQuantity'])->name('update');
+    
+    // Remove item
+    Route::delete('/remove/{id}', [App\Http\Controllers\Public\CartController::class, 'removeItem'])->name('remove');
+    
+    // Clear cart
+    Route::post('/clear', [App\Http\Controllers\Public\CartController::class, 'clear'])->name('clear');
+});
 
-// Add this with your other cart routes
-Route::post('/cart/buy-now', [App\Http\Controllers\Public\CartController::class, 'buyNow'])
-    ->name('cart.buy-now');
+// ==================== CHECKOUT ROUTES ====================
+Route::prefix('checkout')->name('checkout.')->middleware('auth')->group(function () {
+    // Original checkout routes (keep for backward compatibility)
+    Route::get('/', [App\Http\Controllers\Public\CheckoutController::class, 'index'])->name('index');
+    Route::post('/process', [App\Http\Controllers\Public\CheckoutController::class, 'process'])->name('process');
+    
+    // Livewire checkout page (new)
+    Route::get('/livewire', function () {
+        return view('public.checkout.livewire-index');
+    })->name('livewire');
+    
+    // Buy now endpoint (kept for API compatibility)
+    Route::post('/buy-now', [App\Http\Controllers\Public\CheckoutController::class, 'buyNow'])->name('buy-now');
+});
 
-// Checkout routes
-Route::get('/checkout', [App\Http\Controllers\Public\CheckoutController::class, 'index'])
-    ->middleware('auth')
-    ->name('checkout.index');
-
-Route::post('/checkout', [App\Http\Controllers\Public\CheckoutController::class, 'process'])
-    ->middleware('auth')
-    ->name('checkout.process');
-
-Route::get('/checkout/success/{order}', [App\Http\Controllers\Public\CheckoutController::class, 'success'])
+// ==================== PAYMENT SUCCESS/CANCEL ROUTES ====================
+// These don't need auth middleware as they're redirects from Stripe
+Route::get('/checkout/success', [App\Http\Controllers\Public\CheckoutController::class, 'success'])
     ->name('checkout.success');
 
-Route::get('/checkout/cancel/{order}', [App\Http\Controllers\Public\CheckoutController::class, 'cancel'])
+Route::get('/checkout/cancel', [App\Http\Controllers\Public\CheckoutController::class, 'cancel'])
     ->name('checkout.cancel');
 
 // Stripe webhook (no auth)
 Route::post('/stripe/webhook', [App\Http\Controllers\Public\CheckoutController::class, 'webhook'])
     ->name('cashier.webhook');
 
-// Customer order routes (protected)
+// ==================== ORDER ROUTES ====================
 Route::middleware('auth')->prefix('orders')->name('orders.')->group(function () {
     Route::get('/', [App\Http\Controllers\Public\OrderController::class, 'index'])->name('index');
     Route::get('/{order}', [App\Http\Controllers\Public\OrderController::class, 'show'])->name('show');
 });
 
-// Wishlist routes (protected)
+// ==================== WISHLIST ROUTES ====================
 Route::middleware('auth')->prefix('wishlist')->name('wishlist.')->group(function () {
     Route::get('/', [App\Http\Controllers\Public\WishlistController::class, 'index'])->name('index');
     Route::post('/add/{product}', [App\Http\Controllers\Public\WishlistController::class, 'add'])->name('add');
@@ -82,7 +99,7 @@ Route::middleware('auth')->prefix('wishlist')->name('wishlist.')->group(function
     Route::post('/move-to-cart/{product}', [App\Http\Controllers\Public\WishlistController::class, 'moveToCart'])->name('move-to-cart');
 });
 
-// Public review routes
+// ==================== REVIEW ROUTES ====================
 Route::middleware('auth')->prefix('reviews')->name('reviews.')->group(function () {
     Route::get('/create/{product}', [App\Http\Controllers\Public\ReviewController::class, 'create'])->name('create');
     Route::post('/{product}', [App\Http\Controllers\Public\ReviewController::class, 'store'])->name('store');
@@ -91,6 +108,4 @@ Route::middleware('auth')->prefix('reviews')->name('reviews.')->group(function (
 });
 
 require __DIR__ . '/auth.php';
-
-// Include admin routes
 require __DIR__ . '/admin.php';

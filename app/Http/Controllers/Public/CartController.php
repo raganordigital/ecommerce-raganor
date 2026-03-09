@@ -47,7 +47,7 @@ class CartController extends Controller
     }
 
     /**
-     * Buy Now - Clears existing cart and adds only this product
+     * Buy Now - Stores product in session and redirects to Livewire checkout
      */
     public function buyNow(Request $request): RedirectResponse
     {
@@ -56,20 +56,20 @@ class CartController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
 
-        $product = Product::findOrFail($request->product_id);
+        $product = Product::with('primaryImage')->findOrFail($request->product_id);
 
-        // Clear the entire cart first
-        $this->cartService->clear();
+        // Store in session for the checkout page
+        session(['buy_now_item' => [
+            'product_id' => $product->id,
+            'quantity' => $request->quantity,
+            'price' => $product->current_price,
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'image' => $product->primaryImage?->thumbnail_path,
+        ]]);
 
-        // Add only the selected product
-        $result = $this->cartService->add($product, $request->quantity);
-
-        if (!$result['success']) {
-            return redirect()->back()->with('error', $result['message']);
-        }
-
-        // Redirect directly to checkout
-        return redirect()->route('checkout.index')
+        // Redirect to Livewire checkout page
+        return redirect()->route('checkout.livewire')
             ->with('success', 'Proceeding to checkout with your selected item.');
     }
 

@@ -49,17 +49,21 @@ class AddToCart extends Component
     }
 
     public function buyNow(): void
-    {
-        $this->quantity = 1;
-        $this->validate();
+{
+    $this->validate();
 
-        $result = $this->cartService->add($this->product, $this->quantity);
+    // Store in session — bypasses cart completely (matches CheckoutController logic)
+    session(['buy_now_item' => [
+        'product_id' => $this->product->id,
+        'quantity'   => $this->quantity,
+        'price'      => $this->product->current_price,
+        'name'       => $this->product->name,
+        'sku'        => $this->product->sku,
+        'image'      => $this->product->primaryImage?->thumbnail_path,
+    ]]);
 
-        if ($result['success']) {
-            $this->dispatch('cart-count-updated', count: $result['cartCount']);
-            $this->redirect(route('checkout.index'));
-        }
-    }
+    $this->redirect(route('checkout.index'));
+}
 
     public function render()
     {

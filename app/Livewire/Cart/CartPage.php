@@ -22,6 +22,26 @@ class CartPage extends Component
         $this->dispatch('cart-count-updated', count: $result['cartCount']);
     }
 
+    public function incrementQuantity(int $productId): void
+    {
+        $cartItem = $this->cartService->getItem($productId);
+        if ($cartItem) {
+            $newQuantity = $cartItem->quantity + 1;
+            $result = $this->cartService->update($productId, $newQuantity);
+            $this->dispatch('cart-count-updated', count: $result['cartCount']);
+        }
+    }
+
+    public function decrementQuantity(int $productId): void
+    {
+        $cartItem = $this->cartService->getItem($productId);
+        if ($cartItem && $cartItem->quantity > 1) {
+            $newQuantity = $cartItem->quantity - 1;
+            $result = $this->cartService->update($productId, $newQuantity);
+            $this->dispatch('cart-count-updated', count: $result['cartCount']);
+        }
+    }
+
     public function removeItem(int $productId): void
     {
         $result = $this->cartService->remove($productId);

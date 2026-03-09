@@ -20,13 +20,11 @@ class OrderService
     }
 
     /**
-     * Create a new order from cart.
-     * Does NOT send any emails — that happens in CheckoutController
-     * only after Stripe confirms payment_status = 'paid'.
+     * Create a new order from cart after successful payment.
      *
      * @throws \Exception
      */
-    public function createOrder(array $data): Order
+    public function createOrder(array $data, string $stripeSessionId): Order
     {
         try {
             DB::beginTransaction();
@@ -38,9 +36,10 @@ class OrderService
 
             $order = Order::create([
                 'user_id'        => auth()->id(),
-                'status'         => 'pending',
-                'payment_status' => 'pending',
+                'status'         => 'processing',
+                'payment_status' => 'paid',
                 'payment_method' => 'stripe',
+                'stripe_session_id' => $stripeSessionId,
 
                 'shipping_name'     => $data['shipping_name'],
                 'shipping_email'    => $data['shipping_email'],
