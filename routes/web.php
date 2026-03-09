@@ -40,19 +40,19 @@ Route::get('/products/{product:slug}', [PublicProductController::class, 'show'])
 Route::prefix('cart')->name('cart.')->group(function () {
     // View cart
     Route::get('/', [App\Http\Controllers\Public\CartController::class, 'index'])->name('index');
-    
+
     // Add to cart
     Route::post('/add', [App\Http\Controllers\Public\CartController::class, 'add'])->name('add');
-    
+
     // Buy now - clears cart and adds single item
     Route::post('/buy-now', [App\Http\Controllers\Public\CartController::class, 'buyNow'])->name('buy-now');
-    
+
     // Update quantity
     Route::post('/update/{id}', [App\Http\Controllers\Public\CartController::class, 'updateQuantity'])->name('update');
-    
+
     // Remove item
     Route::delete('/remove/{id}', [App\Http\Controllers\Public\CartController::class, 'removeItem'])->name('remove');
-    
+
     // Clear cart
     Route::post('/clear', [App\Http\Controllers\Public\CartController::class, 'clear'])->name('clear');
 });
@@ -62,12 +62,12 @@ Route::prefix('checkout')->name('checkout.')->middleware('auth')->group(function
     // Original checkout routes (keep for backward compatibility)
     Route::get('/', [App\Http\Controllers\Public\CheckoutController::class, 'index'])->name('index');
     Route::post('/process', [App\Http\Controllers\Public\CheckoutController::class, 'process'])->name('process');
-    
+
     // Livewire checkout page (new)
     Route::get('/livewire', function () {
         return view('public.checkout.livewire-index');
     })->name('livewire');
-    
+
     // Buy now endpoint (kept for API compatibility)
     Route::post('/buy-now', [App\Http\Controllers\Public\CheckoutController::class, 'buyNow'])->name('buy-now');
 });
@@ -83,6 +83,12 @@ Route::get('/checkout/cancel', [App\Http\Controllers\Public\CheckoutController::
 // Stripe webhook (no auth)
 Route::post('/stripe/webhook', [App\Http\Controllers\Public\CheckoutController::class, 'webhook'])
     ->name('cashier.webhook');
+
+Route::get('/checkout/success/{orderNumber}', [App\Http\Controllers\Public\CheckoutController::class, 'successWithOrder'])
+    ->name('checkout.success.order');
+
+Route::get('/checkout/cod-success/{orderNumber}', [App\Http\Controllers\Public\CheckoutController::class, 'codSuccess'])
+    ->name('checkout.cod-success');
 
 // ==================== ORDER ROUTES ====================
 Route::middleware('auth')->prefix('orders')->name('orders.')->group(function () {

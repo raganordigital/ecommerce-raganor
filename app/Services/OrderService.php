@@ -70,7 +70,7 @@ class OrderService
                 OrderItem::create([
                     'order_id'    => $order->id,
                     'product_id'  => $item->id,
-                    'product_name'=> $item->name,
+                    'product_name' => $item->name,
                     'product_sku' => $item->attributes->sku,
                     'price'       => $item->price,
                     'quantity'    => $item->quantity,
@@ -86,7 +86,6 @@ class OrderService
             DB::commit();
 
             return $order;
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to create order', [
@@ -137,4 +136,150 @@ class OrderService
 
         return $order->save();
     }
+
+    public function createCodOrder(array $data): Order
+    {
+        try {
+            DB::beginTransaction();
+
+            $cartItems = $this->cartService->getContent();
+            $subtotal  = $this->cartService->getSubtotal();
+            $tax       = $subtotal * 0.10; // tax rate configurable
+            $total     = $subtotal + $tax;
+
+            $order = Order::create([
+                'user_id'        => auth()->id(),
+                'status'         => 'pending', // or 'processing'? Usually pending for COD
+                'payment_status' => 'pending', // unpaid until marked paid
+                'payment_method' => 'cod',
+                'payment_id'     => null,
+
+                'shipping_name'     => $data['shipping_name'],
+                'shipping_email'    => $data['shipping_email'],
+                'shipping_phone'    => $data['shipping_phone'],
+                'shipping_address'  => $data['shipping_address'],
+                'shipping_city'     => $data['shipping_city'],
+                'shipping_state'    => $data['shipping_state'] ?? null,
+                'shipping_zipcode'  => $data['shipping_zipcode'],
+                'shipping_country'  => $data['shipping_country'],
+
+                'billing_name'     => $data['shipping_name'], // same as shipping
+                'billing_email'    => $data['shipping_email'],
+                'billing_phone'    => $data['shipping_phone'],
+                'billing_address'  => $data['shipping_address'],
+                'billing_city'     => $data['shipping_city'],
+                'billing_state'    => $data['shipping_state'] ?? null,
+                'billing_zipcode'  => $data['shipping_zipcode'],
+                'billing_country'  => $data['shipping_country'],
+
+                'subtotal'      => $subtotal,
+                'tax'           => $tax,
+                'shipping_cost' => 0,
+                'discount'      => 0,
+                'total'         => $total,
+            ]);
+
+            foreach ($cartItems as $item) {
+                OrderItem::create([
+                    'order_id'    => $order->id,
+                    'product_id'  => $item->id,
+                    'product_name' => $item->name,
+                    'product_sku' => $item->attributes->sku,
+                    'price'       => $item->price,
+                    'quantity'    => $item->quantity,
+                    'subtotal'    => $item->price * $item->quantity,
+                ]);
+
+                $product = Product::find($item->id);
+                if ($product && $product->manage_stock) {
+                    $product->decreaseStock($item->quantity);
+                }
+            }
+
+            DB::commit();
+
+            // Send order confirmation email (optional for COD)
+            // You might want to send a different email or same
+            // Mail::to($order->shipping_email)->send(new OrderConfirmation($order));
+
+            return $order;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to create COD order', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
+    public function createBuyNowCodOrder(array $data, array $buyNowItem): Order
+{
+    try {
+        DB::beginTransaction();
+
+        $subtotal = $buyNowItem['price'] * $buyNowItem['quantity'];
+        $tax = $subtotal * 0.10;
+        $total = $subtotal + $tax;
+
+        $product = Product::find($buyNowItem['product_id']);
+
+        $order = Order::create([
+            'user_id'        => auth()->id(),
+            'status'         => 'pending',
+            'payment_status' => 'pending',
+            'payment_method' => 'cod',
+            'stripe_session_id' => null,
+
+            'shipping_name'     => $data['shipping_name'],
+            'shipping_email'    => $data['shipping_email'],
+            'shipping_phone'    => $data['shipping_phone'],
+            'shipping_address'  => $data['shipping_address'],
+            'shipping_city'     => $data['shipping_city'],
+            'shipping_state'    => $data['shipping_state'] ?? null,
+            'shipping_zipcode'  => $data['shipping_zipcode'],
+            'shipping_country'  => $data['shipping_country'],
+
+            'billing_name'     => $data['shipping_name'],
+            'billing_email'    => $data['shipping_email'],
+            'billing_phone'    => $data['shipping_phone'],
+            'billing_address'  => $data['shipping_address'],
+            'billing_city'     => $data['shipping_city'],
+            'billing_state'    => $data['shipping_state'] ?? null,
+            'billing_zipcode'  => $data['shipping_zipcode'],
+            'billing_country'  => $data['shipping_country'],
+
+            'subtotal'      => $subtotal,
+            'tax'           => $tax,
+            'shipping_cost' => 0,
+            'discount'      => 0,
+            'total'         => $total,
+        ]);
+
+        $order->items()->create([
+            'product_id'  => $buyNowItem['product_id'],
+            'product_name' => $product->name,
+            'product_sku' => $product->sku,
+            'price'       => $buyNowItem['price'],
+            'quantity'    => $buyNowItem['quantity'],
+            'subtotal'    => $subtotal,
+        ]);
+
+        if ($product && $product->manage_stock) {
+            $product->decreaseStock($buyNowItem['quantity']);
+        }
+
+        DB::commit();
+
+        return $order;
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Failed to create buy now COD order', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        throw $e;
+    }
+}
 }

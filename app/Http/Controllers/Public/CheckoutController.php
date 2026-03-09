@@ -571,4 +571,34 @@ class CheckoutController extends Controller
                 ->with('error', 'Failed to process checkout: ' . $e->getMessage());
         }
     }
+
+    public function successWithOrder(string $orderNumber): View
+    {
+        $order = Order::where('order_number', $orderNumber)
+            ->with('items')
+            ->firstOrFail();
+
+        if ($order->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        return view('public.checkout.success', compact('order'));
+    }
+
+    /**
+     * Show success page for COD orders.
+     */
+    public function codSuccess(string $orderNumber): View
+    {
+        $order = Order::where('order_number', $orderNumber)
+            ->with('items')
+            ->firstOrFail();
+
+        // Ensure the order belongs to the authenticated user
+        if ($order->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        return view('public.checkout.cod-success', compact('order'));
+    }
 }

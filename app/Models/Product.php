@@ -66,6 +66,7 @@ class Product extends Model
         'meta_keywords',
         'views_count',
         'sales_count',
+        'allow_cod',
     ];
 
     /**
@@ -84,6 +85,7 @@ class Product extends Model
         'is_featured' => 'boolean',
         'views_count' => 'integer',
         'sales_count' => 'integer',
+        'allow_cod' => 'boolean',
     ];
 
     /**
@@ -330,4 +332,6 @@ class Product extends Model
 
         return $distribution;
     }
+
+    
 }

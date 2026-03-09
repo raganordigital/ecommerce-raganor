@@ -47,6 +47,7 @@ class ProductRequest extends FormRequest
             'categories.*' => ['exists:categories,id'],
             'images' => ['nullable', 'array', 'max:5'], // Max 5 images
             'images.*' => ['image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'], // 2MB max per image
+            'allow_cod' => 'sometimes|boolean',
         ];
     }
 

@@ -96,8 +96,11 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            // Create product
-            $product = Product::create($request->except(['categories', 'images']));
+            // Prepare data – convert checkbox to boolean
+            $data = $request->except(['categories', 'images']);
+            $data['allow_cod'] = $request->has('allow_cod');
+
+            $product = Product::create($data);
 
             // Attach categories
             if ($request->has('categories')) {
@@ -128,7 +131,6 @@ class ProductController extends Controller
             return redirect()
                 ->route('admin.products.index')
                 ->with('success', "Product '{$product->name}' created successfully.");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to create product', ['error' => $e->getMessage()]);
@@ -169,8 +171,10 @@ class ProductController extends Controller
         try {
             DB::beginTransaction();
 
-            // Update product
-            $product->update($request->except(['categories', 'images']));
+            // Update product – convert checkbox to boolean
+            $data = $request->except(['categories', 'images']);
+            $data['allow_cod'] = $request->has('allow_cod');
+            $product->update($data);
 
             // Sync categories
             if ($request->has('categories')) {
@@ -205,7 +209,6 @@ class ProductController extends Controller
             return redirect()
                 ->route('admin.products.index')
                 ->with('success', "Product '{$product->name}' updated successfully.");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to update product', ['error' => $e->getMessage()]);
@@ -245,7 +248,6 @@ class ProductController extends Controller
             return redirect()
                 ->route('admin.products.index')
                 ->with('success', "Product '{$product->name}' deleted successfully.");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to delete product', ['error' => $e->getMessage()]);
@@ -271,7 +273,6 @@ class ProductController extends Controller
             return redirect()
                 ->back()
                 ->with('success', "Product '{$product->name}' {$status} successfully.");
-
         } catch (\Exception $e) {
             Log::error('Failed to toggle product status', ['error' => $e->getMessage()]);
 
@@ -296,7 +297,6 @@ class ProductController extends Controller
             return redirect()
                 ->back()
                 ->with('success', "Product '{$product->name}' {$status} featured successfully.");
-
         } catch (\Exception $e) {
             Log::error('Failed to toggle featured status', ['error' => $e->getMessage()]);
 
@@ -341,7 +341,6 @@ class ProductController extends Controller
             return redirect()
                 ->back()
                 ->with('success', 'Image deleted successfully.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to delete image', ['error' => $e->getMessage()]);
@@ -351,8 +350,6 @@ class ProductController extends Controller
                 ->with('error', 'Failed to delete image.');
         }
     }
-
-    
 
     /**
      * Reorder images.
@@ -376,7 +373,6 @@ class ProductController extends Controller
             DB::commit();
 
             return response()->json(['success' => true]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to reorder images', ['error' => $e->getMessage()]);
