@@ -122,3 +122,15 @@ Route::middleware('auth')->prefix('reviews')->name('reviews.')->group(function (
 
 require __DIR__ . '/auth.php';
 require __DIR__ . '/admin.php';
+
+// Override password reset routes to allow authenticated users
+Route::middleware('web')->group(function () {
+    Route::get('/forgot-password', [App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+    Route::post('/forgot-password', [App\Http\Controllers\Auth\PasswordResetLinkController::class, 'store'])
+        ->name('password.email');
+    Route::get('/reset-password/{token}', [App\Http\Controllers\Auth\NewPasswordController::class, 'create'])
+        ->name('password.reset');
+    Route::post('/reset-password', [App\Http\Controllers\Auth\NewPasswordController::class, 'store'])
+        ->name('password.store');
+});

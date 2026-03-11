@@ -48,7 +48,7 @@
                 @csrf
                 <div>
                     <label for="email" class="block text-sm font-semibold text-gray-300 mb-2">Email Address</label>
-                    <input id="email" type="email" name="email" value="{{ old('email') }}" placeholder="you@example.com" required autofocus class="auth-input {{ $errors->get('email') ? 'border-red-500/50' : '' }}">
+                    <input id="email" type="email" name="email" value="{{ old('email', auth()->user()->email ?? '') }}" placeholder="you@example.com" required autofocus class="auth-input {{ $errors->get('email') ? 'border-red-500/50' : '' }}">
                     @error('email')<p class="mt-1.5 text-xs text-red-400 flex items-center gap-1"><svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>{{ $message }}</p>@enderror
                 </div>
                 <div class="pt-1"><button type="submit" class="auth-btn">Send reset link</button></div>

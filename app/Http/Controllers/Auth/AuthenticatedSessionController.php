@@ -34,8 +34,11 @@ public function store(LoginRequest $request): RedirectResponse
         return redirect()->intended(route('admin.dashboard'));
     }
 
-    // ✅ intended() checks session first — sends user back to /cart, /profile etc.
-    // Falls back to home only if no intended URL was stored
+    // If the intended URL is the dashboard (non-admin), clear it and redirect to home
+    if (session()->has('url.intended') && str_contains(session()->get('url.intended'), '/dashboard')) {
+        session()->forget('url.intended');
+    }
+
     return redirect()->intended(route('home'));
 }
 

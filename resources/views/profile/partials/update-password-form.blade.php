@@ -30,6 +30,10 @@
             @enderror
         </div>
 
+        <a href="{{ route('password.request') }}" class="text-sm text-blue-600 hover:text-blue-800">
+    Forgot your password?
+</a>
+
         <div class="flex items-center gap-4">
             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
                 Save
