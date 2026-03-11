@@ -39,6 +39,8 @@ class OrderItem extends Model
         'quantity',
         'subtotal',
         'options',
+        'shipping_cost',
+        'tax',
     ];
 
     /**
@@ -51,6 +53,8 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'subtotal' => 'decimal:2',
         'options' => 'array',
+        'shipping_cost' => 'decimal:2',
+        'tax' => 'decimal:2',
     ];
 
     /**

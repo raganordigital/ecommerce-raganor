@@ -74,6 +74,9 @@ class ProductRequest extends FormRequest
             'images.*.max' => 'Each image must not exceed 2MB.',
             'images.*.image' => 'All files must be valid image files.',
             'images.max' => 'You can upload maximum 5 images per product.',
+            'shipping_cost' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'free_shipping' => ['boolean'],
         ];
     }
 

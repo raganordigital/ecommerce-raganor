@@ -67,6 +67,9 @@ class Product extends Model
         'views_count',
         'sales_count',
         'allow_cod',
+        'shipping_cost',
+        'tax_rate',
+        'free_shipping',
     ];
 
     /**
@@ -86,6 +89,9 @@ class Product extends Model
         'views_count' => 'integer',
         'sales_count' => 'integer',
         'allow_cod' => 'boolean',
+        'shipping_cost' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
+        'free_shipping' => 'boolean',
     ];
 
     /**
@@ -190,7 +196,7 @@ class Product extends Model
      */
     public function getFormattedPriceAttribute(): string
     {
-        return '$'.number_format($this->current_price, 2);
+        return '$' . number_format($this->current_price, 2);
     }
 
     /**
@@ -332,6 +338,4 @@ class Product extends Model
 
         return $distribution;
     }
-
-    
 }

@@ -239,7 +239,7 @@
 
                             <!-- Submit Button -->
                             <button type="submit" class="w-full {{ $checkoutType == 'buy_now' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700' }} text-white py-4 px-6 rounded-lg font-medium transition-colors flex items-center justify-center group" wire:loading.attr="disabled" wire:target="processCheckout">
-                                <span wire:loading.remove wire:target="processCheckout">Proceed to Payment (${{ number_format($subtotal, 2) }})</span>
+                                <span wire:loading.remove wire:target="processCheckout">Proceed to Payment (${{ number_format($subtotal + $totalShipping + $totalTax, 2) }})</span>
                                 <span wire:loading wire:target="processCheckout" class="flex items-center">
                                     <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -318,18 +318,18 @@
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Shipping</span>
-                            <span class="text-gray-500">Calculated at next step</span>
+                            <span class="font-medium text-gray-900">${{ number_format($totalShipping, 2) }}</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Tax</span>
-                            <span class="text-gray-500">Calculated at next step</span>
+                            <span class="font-medium text-gray-900">${{ number_format($totalTax, 2) }}</span>
                         </div>
 
                         <div class="border-t border-gray-200 pt-3 mt-3">
                             <div class="flex justify-between font-semibold text-gray-900">
                                 <span class="text-base">Total</span>
                                 <span class="text-xl {{ $checkoutType == 'buy_now' ? 'text-green-600' : 'text-blue-600' }}">
-                                    ${{ number_format($subtotal, 2) }}
+                                    ${{ number_format($subtotal + $totalShipping + $totalTax, 2) }}
                                 </span>
                             </div>
                         </div>

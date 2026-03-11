@@ -26,6 +26,8 @@ class CheckoutPage extends Component
     public string $shipping_country = '';
     public bool $billing_same = true;
     public string $paymentMethod = 'stripe';
+    public float $totalShipping = 0;
+    public float $totalTax = 0;
 
     protected $listeners = [
         'cart-updated' => 'refreshCart',
@@ -58,7 +60,10 @@ class CheckoutPage extends Component
 
     protected function loadCartData(): void
     {
-        // Check if this is a buy now checkout (has session data)
+        // Reset totals
+        $this->totalShipping = 0;
+        $this->totalTax = 0;
+
         $buyNowItem = session('buy_now_item');
 
         if ($buyNowItem) {
@@ -79,12 +84,32 @@ class CheckoutPage extends Component
                         ],
                     ]
                 ]);
+
                 $this->subtotal = $product->current_price * $buyNowItem['quantity'];
+
+                // Calculate shipping and tax for buy now
+                $shippingPerItem = $product->free_shipping ? 0 : ($product->shipping_cost ?? 0);
+                $this->totalShipping = $shippingPerItem * $buyNowItem['quantity'];
+
+                $taxRate = $product->tax_rate ?? 0;
+                $this->totalTax = $this->subtotal * ($taxRate / 100);
             }
         } else {
             $this->checkoutType = 'cart';
             $this->cartItems = $this->cartService->getContent();
             $this->subtotal = $this->cartService->getSubtotal();
+
+            // Calculate shipping and tax for cart
+            foreach ($this->cartItems as $item) {
+                $product = \App\Models\Product::find($item->id);
+                if ($product) {
+                    $shippingPerItem = $product->free_shipping ? 0 : ($product->shipping_cost ?? 0);
+                    $this->totalShipping += $shippingPerItem * $item->quantity;
+
+                    $taxRate = $product->tax_rate ?? 0;
+                    $this->totalTax += ($item->price * $item->quantity) * ($taxRate / 100);
+                }
+            }
         }
     }
 
@@ -247,14 +272,31 @@ class CheckoutPage extends Component
         $this->addError('checkout', $message);
     }
 
-    public function render()
-    {
-        return view('livewire.checkout.checkout-page', [
-            'cartItems' => $this->cartItems,
-            'subtotal' => $this->subtotal,
-            'checkoutType' => $this->checkoutType,
-        ]);
+public function render()
+{
+    // Recalculate shipping and tax based on current cart items
+    $this->totalShipping = 0;
+    $this->totalTax = 0;
+
+    foreach ($this->cartItems as $item) {
+        $product = \App\Models\Product::find($item->id);
+        if ($product) {
+            $shippingPerItem = $product->free_shipping ? 0 : ($product->shipping_cost ?? 0);
+            $this->totalShipping += $shippingPerItem * $item->quantity;
+
+            $taxRate = $product->tax_rate ?? 0;
+            $this->totalTax += ($item->price * $item->quantity) * ($taxRate / 100);
+        }
     }
+
+    return view('livewire.checkout.checkout-page', [
+        'cartItems' => $this->cartItems,
+        'subtotal' => $this->subtotal,
+        'checkoutType' => $this->checkoutType,
+        'totalShipping' => $this->totalShipping,
+        'totalTax' => $this->totalTax,
+    ]);
+}
 
     public function getCodAvailableProperty(): bool
     {

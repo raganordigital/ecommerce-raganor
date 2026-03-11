@@ -71,20 +71,20 @@ class RolePermissionSeeder extends Seeder
 
         // Create admin user
         $admin = User::firstOrCreate([
-            'email' => 'admin@example.com',
+            'email' => 'admin@a',
         ], [
             'name' => 'Admin User',
-            'password' => bcrypt('password'),
+            'password' => bcrypt('12345678'),
             'email_verified_at' => now(),
         ]);
         $admin->assignRole('admin');
 
         // Create test customer
         $customer = User::firstOrCreate([
-            'email' => 'customer@example.com',
+            'email' => 'user@a',
         ], [
             'name' => 'Test Customer',
-            'password' => bcrypt('password'),
+            'password' => bcrypt('12345678'),
             'email_verified_at' => now(),
         ]);
         $customer->assignRole('customer');

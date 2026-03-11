@@ -68,6 +68,11 @@ Route::prefix('checkout')->name('checkout.')->middleware('auth')->group(function
         return view('public.checkout.livewire-index');
     })->name('livewire');
 
+    Route::get('/cart-checkout', function () {
+    session()->forget('buy_now_item');
+    return redirect()->route('checkout.livewire');
+})->name('checkout.cart');
+
     // Buy now endpoint (kept for API compatibility)
     Route::post('/buy-now', [App\Http\Controllers\Public\CheckoutController::class, 'buyNow'])->name('buy-now');
 });
@@ -89,6 +94,8 @@ Route::get('/checkout/success/{orderNumber}', [App\Http\Controllers\Public\Check
 
 Route::get('/checkout/cod-success/{orderNumber}', [App\Http\Controllers\Public\CheckoutController::class, 'codSuccess'])
     ->name('checkout.cod-success');
+
+    
 
 // ==================== ORDER ROUTES ====================
 Route::middleware('auth')->prefix('orders')->name('orders.')->group(function () {

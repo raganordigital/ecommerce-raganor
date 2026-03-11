@@ -12,17 +12,15 @@
             <p class="text-sm text-gray-500 mt-0.5">Placed on {{ $order->created_at->format('F j, Y \a\t g:i A') }}</p>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('admin.orders.edit', $order) }}"
-               class="flex items-center gap-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl transition-colors">
+            <a href="{{ route('admin.orders.edit', $order) }}" class="flex items-center gap-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit Order
             </a>
-            <a href="{{ route('admin.orders.index') }}"
-               class="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-4 py-2 rounded-xl hover:border-gray-300 transition-colors">
+            <a href="{{ route('admin.orders.index') }}" class="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-4 py-2 rounded-xl hover:border-gray-300 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
                 Back to Orders
             </a>
@@ -48,6 +46,8 @@
                                 <th class="px-6 py-3 text-left text-xs font-bold tracking-widest uppercase text-gray-400">Price</th>
                                 <th class="px-6 py-3 text-left text-xs font-bold tracking-widest uppercase text-gray-400">Qty</th>
                                 <th class="px-6 py-3 text-left text-xs font-bold tracking-widest uppercase text-gray-400">Subtotal</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold tracking-widest uppercase text-gray-400">Shipping</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold tracking-widest uppercase text-gray-400">Tax</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -66,6 +66,8 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                     ${{ number_format($item->subtotal, 2) }}
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${{ number_format($item->shipping_cost, 2) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${{ number_format($item->tax, 2) }}</td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -140,10 +142,9 @@
                     <div>
                         <p class="text-xs text-gray-500 mb-1">Order Status</p>
                         @php
-                            $statusColor = $order->status->color();
+                        $statusColor = $order->status->color();
                         @endphp
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
-                              style="background-color: {{ $statusColor }}10; color: {{ $statusColor }};">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold" style="background-color: {{ $statusColor }}10; color: {{ $statusColor }};">
                             <span class="w-1.5 h-1.5 rounded-full" style="background-color: {{ $statusColor }}"></span>
                             {{ $order->status->label() }}
                         </span>
@@ -152,13 +153,13 @@
                     <div>
                         <p class="text-xs text-gray-500 mb-1">Payment Status</p>
                         @php
-                            $paymentColor = match($order->payment_status->value) {
-                                'paid' => 'green',
-                                'pending' => 'yellow',
-                                'failed' => 'red',
-                                'refunded' => 'gray',
-                                default => 'gray'
-                            };
+                        $paymentColor = match($order->payment_status->value) {
+                        'paid' => 'green',
+                        'pending' => 'yellow',
+                        'failed' => 'red',
+                        'refunded' => 'gray',
+                        default => 'gray'
+                        };
                         @endphp
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-{{ $paymentColor }}-100 text-{{ $paymentColor }}-800">
                             <span class="w-1.5 h-1.5 rounded-full bg-{{ $paymentColor }}-500"></span>
@@ -216,8 +217,7 @@
                         </option>
                         @endforeach
                     </select>
-                    <button type="submit"
-                            class="w-full py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-700 transition-colors">
+                    <button type="submit" class="w-full py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-700 transition-colors">
                         Update Status
                     </button>
                 </form>

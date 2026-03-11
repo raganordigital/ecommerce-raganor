@@ -6,45 +6,36 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\ImageManager;
+use Intervention\Image\Laravel\Facades\Image;
 
 class ImageUploadService
 {
-    protected ImageManager $imageManager;
-
     /**
-     * Constructor
+     * Upload a product image and generate thumbnail.
+     *
+     * @return array{original: string, thumbnail: string}
      */
-    public function __construct()
+    public function uploadProductImage(UploadedFile $file, string $sku, int $index): array
     {
-        $this->imageManager = new ImageManager(new Driver);
-    }
+        $extension = $file->getClientOriginalExtension();
+        $filename = "{$sku}_{$index}_" . uniqid() . ".{$extension}";
+        $thumbFilename = "{$sku}_{$index}_" . uniqid() . "_thumb.{$extension}";
 
-    /**
-     * Upload a product image and create a thumbnail.
-     */
-    public function uploadProductImage(UploadedFile $image, string $sku, int $index): array
-    {
-        // Generate unique filename
-        $extension = $image->getClientOriginalExtension();
-        $filename = $sku.'_'.$index.'_'.time().'.'.$extension;
+        // Store original
+        $originalPath = $file->storeAs('products', $filename, 'public');
 
-        // Store original image
-        $originalPath = $image->storeAs('products/original', $filename, 'public');
-
-        // Create and store thumbnail
-        $imageResource = $this->imageManager->read($image->getRealPath());
-        $imageResource->scale(width: 300);
-
-        $thumbnailFilename = $sku.'_'.$index.'_'.time().'_thumb.'.$extension;
-        $thumbnailPath = 'products/thumbnails/'.$thumbnailFilename;
-
-        Storage::disk('public')->put($thumbnailPath, (string) $imageResource->encode());
+        // Generate and store thumbnail
+        $image = Image::read($file->getRealPath());
+        $image->resize(300, 300, function ($constraint) {
+            $constraint->aspectRatio();
+            $constraint->upsize();
+        });
+        $thumbPath = 'products/thumbnails/' . $thumbFilename;
+        Storage::disk('public')->put($thumbPath, (string) $image->encode());
 
         return [
-            'original' => $originalPath,
-            'thumbnail' => $thumbnailPath,
+            'original' => 'products/' . $filename,
+            'thumbnail' => 'products/thumbnails/' . $thumbFilename,
         ];
     }
 
@@ -54,7 +45,7 @@ class ImageUploadService
     public function deleteImages(array $paths): void
     {
         foreach ($paths as $path) {
-            if (Storage::disk('public')->exists($path)) {
+            if ($path && Storage::disk('public')->exists($path)) {
                 Storage::disk('public')->delete($path);
             }
         }

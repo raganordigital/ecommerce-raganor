@@ -181,7 +181,7 @@
                     </div>
                     
                     <div class="mt-6 space-y-3">
-                        <a href="{{ route('checkout.livewire') }}" 
+                        <a href="{{ url('/checkout/cart-checkout') }}" 
                            class="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center px-6 py-3 rounded-lg font-medium transition-colors">
                             Proceed to Checkout
                         </a>

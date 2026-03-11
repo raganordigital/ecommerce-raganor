@@ -146,11 +146,32 @@ class ProductController extends Controller
      * Display the specified product.
      */
     public function show(Product $product): View
-    {
-        $product->load(['categories', 'images']);
-
-        return view('admin.products.show', compact('product'));
+{
+    if (! $product->is_active) {
+        abort(404);
     }
+
+    $product->increment('views_count');
+
+    $product->load([
+        'categories',
+        'images',
+        'reviews' => function ($q) {
+            $q->with('user')->where('is_approved', true)->latest();
+        },
+    ]);
+
+    $relatedProducts = Product::with('primaryImage')
+        ->where('is_active', true)
+        ->where('id', '!=', $product->id)
+        ->whereHas('categories', function ($query) use ($product) {
+            $query->whereIn('categories.id', $product->categories->pluck('id'));
+        })
+        ->limit(4)
+        ->get();
+
+    return view('public.products.show', compact('product', 'relatedProducts'));
+}
 
     /**
      * Show the form for editing the specified product.
@@ -183,6 +204,33 @@ class ProductController extends Controller
                 $product->categories()->detach();
             }
 
+            // Delete images marked for removal
+            if ($request->has('delete_images')) {
+                $imagesToDelete = ProductImage::whereIn('id', $request->delete_images)
+                    ->where('product_id', $product->id)
+                    ->get();
+
+                foreach ($imagesToDelete as $image) {
+                    $this->imageService->deleteImages([
+                        $image->path,
+                        $image->thumbnail_path,
+                    ]);
+
+                    if ($image->is_primary) {
+                        // Set another image as primary if available
+                        $newPrimary = $product->images()
+                            ->where('id', '!=', $image->id)
+                            ->orderBy('sort_order')
+                            ->first();
+                        if ($newPrimary) {
+                            $newPrimary->update(['is_primary' => true]);
+                        }
+                    }
+
+                    $image->delete();
+                }
+            }
+
             // Handle new image uploads
             if ($request->hasFile('images')) {
                 $maxSortOrder = $product->images()->max('sort_order') ?? -1;
@@ -199,7 +247,7 @@ class ProductController extends Controller
                         'path' => $uploadedImages['original'],
                         'thumbnail_path' => $uploadedImages['thumbnail'],
                         'sort_order' => $maxSortOrder + $index + 1,
-                        'is_primary' => ! $product->primaryImage()->exists() && $index === 0,
+                        'is_primary' => !$product->primaryImage()->exists() && $index === 0,
                     ]);
                 }
             }
@@ -309,9 +357,12 @@ class ProductController extends Controller
     /**
      * Delete a specific product image.
      */
-    public function deleteImage(Product $product, ProductImage $image): RedirectResponse
+    public function deleteImage(Product $product, ProductImage $image): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
         if ($image->product_id !== $product->id) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Image does not belong to this product.'], 404);
+            }
             abort(404);
         }
 
@@ -338,12 +389,20 @@ class ProductController extends Controller
 
             DB::commit();
 
+            if (request()->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Image deleted.']);
+            }
+
             return redirect()
                 ->back()
                 ->with('success', 'Image deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to delete image', ['error' => $e->getMessage()]);
+
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Failed to delete image.'], 500);
+            }
 
             return redirect()
                 ->back()

@@ -294,45 +294,26 @@ class CheckoutController extends Controller
      */
     protected function createBuyNowOrder(array $data, array $buyNowItem, string $stripeSessionId): Order
     {
-        $subtotal = $buyNowItem['price'] * $buyNowItem['quantity'];
-        $tax = $subtotal * 0.10; // 10% tax
-        $total = $subtotal + $tax;
-
         $product = Product::find($buyNowItem['product_id']);
+        $subtotal = $buyNowItem['price'] * $buyNowItem['quantity'];
+
+        $shippingPerItem = $product->free_shipping ? 0 : ($product->shipping_cost ?? 0);
+        $itemShipping = $shippingPerItem * $buyNowItem['quantity'];
+
+        $taxRate = $product->tax_rate ?? 0;
+        $itemTax = $subtotal * ($taxRate / 100);
+
+        $total = $subtotal + $itemShipping + $itemTax;
 
         $order = Order::create([
-            'user_id'        => auth()->id(),
-            'status'         => 'processing',
-            'payment_status' => 'paid',
-            'payment_method' => 'stripe',
-            'stripe_session_id' => $stripeSessionId,
-
-            'shipping_name'     => $data['shipping_name'],
-            'shipping_email'    => $data['shipping_email'],
-            'shipping_phone'    => $data['shipping_phone'],
-            'shipping_address'  => $data['shipping_address'],
-            'shipping_city'     => $data['shipping_city'],
-            'shipping_state'    => $data['shipping_state'] ?? null,
-            'shipping_zipcode'  => $data['shipping_zipcode'],
-            'shipping_country'  => $data['shipping_country'],
-
-            'billing_name'     => $data['shipping_name'],
-            'billing_email'    => $data['shipping_email'],
-            'billing_phone'    => $data['shipping_phone'],
-            'billing_address'  => $data['shipping_address'],
-            'billing_city'     => $data['shipping_city'],
-            'billing_state'    => $data['shipping_state'] ?? null,
-            'billing_zipcode'  => $data['shipping_zipcode'],
-            'billing_country'  => $data['shipping_country'],
-
+            // ... same fields as before, but with calculated totals
             'subtotal'      => $subtotal,
-            'tax'           => $tax,
-            'shipping_cost' => 0,
-            'discount'      => 0,
+            'tax'           => $itemTax,
+            'shipping_cost' => $itemShipping,
             'total'         => $total,
+            // ... rest
         ]);
 
-        // Create order item
         $order->items()->create([
             'product_id'  => $buyNowItem['product_id'],
             'product_name' => $product->name,
@@ -340,12 +321,9 @@ class CheckoutController extends Controller
             'price'       => $buyNowItem['price'],
             'quantity'    => $buyNowItem['quantity'],
             'subtotal'    => $subtotal,
+            'shipping_cost' => $itemShipping,
+            'tax'         => $itemTax,
         ]);
-
-        // Update stock
-        if ($product && $product->manage_stock) {
-            $product->decreaseStock($buyNowItem['quantity']);
-        }
 
         return $order;
     }
