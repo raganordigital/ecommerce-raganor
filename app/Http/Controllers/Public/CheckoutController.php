@@ -213,6 +213,10 @@ class CheckoutController extends Controller
             return redirect()->route('checkout.livewire')
                 ->with('error', 'Failed to process checkout: ' . $e->getMessage());
         }
+
+        if (!session('checkout_email_verified', false)) {
+            return redirect()->route('checkout.livewire')->with('error', 'Email not verified.');
+        }
     }
 
     /**
@@ -256,7 +260,7 @@ class CheckoutController extends Controller
                     $this->cartService->clear();
                 }
 
-                session()->forget(['buy_now_item', 'checkout_shipping', 'stripe_session_id', 'checkout_session_id']);
+                session()->forget(['buy_now_item', 'checkout_shipping', 'stripe_session_id', 'checkout_session_id', 'checkout_email_verified']);
 
                 // Send confirmation emails
                 $this->sendOrderEmails($order);
@@ -283,7 +287,7 @@ class CheckoutController extends Controller
         $sessionId = $request->get('session_id');
 
         // Clear session data
-        session()->forget(['buy_now_item', 'checkout_shipping', 'stripe_session_id', 'checkout_session_id']);
+        session()->forget(['buy_now_item', 'checkout_shipping', 'stripe_session_id', 'checkout_session_id', 'checkout_email_verified']);
 
         return redirect()->route('cart.index')
             ->with('error', 'Checkout was cancelled. Please try again.');

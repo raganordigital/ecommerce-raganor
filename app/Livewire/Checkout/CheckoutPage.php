@@ -6,6 +6,8 @@ namespace App\Livewire\Checkout;
 
 use App\Services\CartService;
 use Livewire\Component;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\OrderEmailVerification;
 
 class CheckoutPage extends Component
 {
@@ -28,6 +30,9 @@ class CheckoutPage extends Component
     public string $paymentMethod = 'stripe';
     public float $totalShipping = 0;
     public float $totalTax = 0;
+    public bool $accountVerified = false; // will be loaded from session
+    public string $accountVerificationCode = '';
+    public bool $accountVerificationSent = false;
 
     protected $listeners = [
         'cart-updated' => 'refreshCart',
@@ -54,6 +59,7 @@ class CheckoutPage extends Component
 
     public function mount(): void
     {
+        $this->accountVerified = session('account_email_verified', false);
         $this->loadCartData();
         $this->loadUserData();
     }
@@ -210,11 +216,18 @@ class CheckoutPage extends Component
         }
     }
 
+
+
     public function processCheckout()
     {
         // If COD selected but not available, show error
         if ($this->paymentMethod === 'cod' && !$this->codAvailable) {
             $this->addError('paymentMethod', 'Cash on Delivery is not available for some items.');
+            return;
+        }
+
+        if (!session('account_email_verified', false)) {
+            $this->addError('account', 'Please verify your account email before proceeding.');
             return;
         }
 
@@ -272,31 +285,31 @@ class CheckoutPage extends Component
         $this->addError('checkout', $message);
     }
 
-public function render()
-{
-    // Recalculate shipping and tax based on current cart items
-    $this->totalShipping = 0;
-    $this->totalTax = 0;
+    public function render()
+    {
+        // Recalculate shipping and tax based on current cart items
+        $this->totalShipping = 0;
+        $this->totalTax = 0;
 
-    foreach ($this->cartItems as $item) {
-        $product = \App\Models\Product::find($item->id);
-        if ($product) {
-            $shippingPerItem = $product->free_shipping ? 0 : ($product->shipping_cost ?? 0);
-            $this->totalShipping += $shippingPerItem * $item->quantity;
+        foreach ($this->cartItems as $item) {
+            $product = \App\Models\Product::find($item->id);
+            if ($product) {
+                $shippingPerItem = $product->free_shipping ? 0 : ($product->shipping_cost ?? 0);
+                $this->totalShipping += $shippingPerItem * $item->quantity;
 
-            $taxRate = $product->tax_rate ?? 0;
-            $this->totalTax += ($item->price * $item->quantity) * ($taxRate / 100);
+                $taxRate = $product->tax_rate ?? 0;
+                $this->totalTax += ($item->price * $item->quantity) * ($taxRate / 100);
+            }
         }
-    }
 
-    return view('livewire.checkout.checkout-page', [
-        'cartItems' => $this->cartItems,
-        'subtotal' => $this->subtotal,
-        'checkoutType' => $this->checkoutType,
-        'totalShipping' => $this->totalShipping,
-        'totalTax' => $this->totalTax,
-    ]);
-}
+        return view('livewire.checkout.checkout-page', [
+            'cartItems' => $this->cartItems,
+            'subtotal' => $this->subtotal,
+            'checkoutType' => $this->checkoutType,
+            'totalShipping' => $this->totalShipping,
+            'totalTax' => $this->totalTax,
+        ]);
+    }
 
     public function getCodAvailableProperty(): bool
     {
@@ -330,5 +343,55 @@ public function render()
                 $this->paymentMethod = 'stripe';
             }
         }
+    }
+
+    public function sendAccountVerification()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            $this->addError('account', 'You must be logged in.');
+            return;
+        }
+
+        $code = random_int(100000, 999999);
+
+        session([
+            'account_verification_code' => (string) $code,
+            'account_verification_expires' => now()->addMinutes(10),
+        ]);
+
+        Mail::to($user->email)->send(new OrderEmailVerification($user->email, (string) $code));
+
+        $this->accountVerificationSent = true;
+        $this->dispatch('verification-sent');
+    }
+
+    public function verifyAccountCode()
+    {
+        $this->validate([
+            'accountVerificationCode' => 'required|string|size:6',
+        ]);
+
+        $storedCode = session('account_verification_code');
+        $expires = session('account_verification_expires');
+
+        if (!$storedCode || !$expires || now()->gt($expires)) {
+            $this->addError('accountVerificationCode', 'Verification code has expired. Please request a new one.');
+            return;
+        }
+
+        if ($this->accountVerificationCode !== $storedCode) {
+            $this->addError('accountVerificationCode', 'Invalid verification code.');
+            return;
+        }
+
+        session(['account_email_verified' => true]);
+        $this->accountVerified = true;
+        $this->accountVerificationCode = '';
+        $this->accountVerificationSent = false;
+
+        session()->forget(['account_verification_code', 'account_verification_expires']);
+
+        $this->dispatch('account-verified');
     }
 }

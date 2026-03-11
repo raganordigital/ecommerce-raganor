@@ -97,6 +97,35 @@
                                         @enderror
                                     </div>
 
+                                    <!-- Account Email Verification -->
+                                    <div class="mb-6 border-t border-gray-200 pt-6">
+                                        <h3 class="text-md font-medium text-gray-900 mb-4">Account Verification</h3>
+                                        <p class="text-sm text-gray-600 mb-2">Verify your account email ({{ auth()->user()->email }}) to proceed.</p>
+
+                                        @if(!$accountVerified)
+                                        @if(!$accountVerificationSent)
+                                        <button type="button" wire:click="sendAccountVerification" class="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                                            Send Verification Code
+                                        </button>
+                                        @else
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" wire:model="accountVerificationCode" placeholder="Enter 6-digit code" class="w-32 px-2 py-1 text-sm border border-gray-300 rounded-lg">
+                                            <button type="button" wire:click="verifyAccountCode" class="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700">
+                                                Verify
+                                            </button>
+                                        </div>
+                                        @error('accountVerificationCode') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                                        @endif
+                                        @else
+                                        <div class="text-sm text-green-600 flex items-center gap-1">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            Account email verified
+                                        </div>
+                                        @endif
+                                    </div>
+
                                     <div>
                                         <label for="shipping_phone" class="block text-sm font-medium text-gray-700 mb-1">
                                             Phone Number <span class="text-red-500">*</span>
